@@ -8,24 +8,30 @@ import {
   FiSettings, 
   FiLogOut,
   FiMenu,
-  FiX,
-  FiTrendingUp,
-  FiStar,
-  FiBell
+  FiX
 } from 'react-icons/fi';
 import { useAuthStore } from '../../store/authStore';
-import { useCurrencyContext } from '../../context/CurrencyContext';
+import { checkAdminAccess } from '../../utils/checkAdmin';
 import toast from 'react-hot-toast';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout } = useAuthStore();
-  const { formatPrice } = useCurrencyContext();
+  const { user, logout, checkAuth } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  useEffect(() => {
+    // Debug admin access
+    const isAdmin = checkAdminAccess();
+    console.log('AdminLayout - Is Admin?', isAdmin);
+    console.log('AdminLayout - User object:', user);
+    
     // Check if user is admin
     if (user && user.role !== 'admin') {
+      console.log('Access denied: User role is', user.role);
       toast.error('Access denied. Admin only.');
       navigate('/');
     }
@@ -45,12 +51,24 @@ const AdminLayout = () => {
     { name: 'Settings', path: '/admin/settings', icon: FiSettings },
   ];
 
-  if (!user || user.role !== 'admin') {
+  // Show loading while checking admin status
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-boutique-primary"></div>
+      </div>
+    );
+  }
+
+  // If not admin, show access denied
+  if (user.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
+          <div className="text-6xl mb-4">🔒</div>
           <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-6">You don't have permission to access this page.</p>
+          <p className="text-gray-600 mb-6">You don't have permission to access the admin dashboard.</p>
+          <p className="text-gray-500 mb-6">Your role: {user.role}</p>
           <Link to="/" className="btn-primary">Go Home</Link>
         </div>
       </div>
@@ -112,6 +130,7 @@ const AdminLayout = () => {
               <div>
                 <p className="font-medium text-gray-800 dark:text-white">{user.name}</p>
                 <p className="text-xs text-gray-500 dark:text-dark-textMuted">{user.email}</p>
+                <p className="text-xs text-boutique-primary mt-1">Admin</p>
               </div>
             </div>
             <button

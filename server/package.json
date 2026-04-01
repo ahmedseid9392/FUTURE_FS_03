@@ -15,7 +15,9 @@
     "test:orders": "node scripts/testOrders.js",
     "create:testuser": "node scripts/createTestUser.js",
     "seed:products": "node scripts/createSampleProducts.js",
-    "create:admin": "node scripts/createAdmin.js"
+    "create:admin": "node scripts/createAdmin.js",
+    "update:admin": "node scripts/updateAdminProfileImage.js",
+    "add:profileimage": "node scripts/addProfileImageToAllUsers.js"
   },
   "keywords": [],
   "author": "",

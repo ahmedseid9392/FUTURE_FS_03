@@ -86,38 +86,47 @@ export const authService = {
     }
   },
   
-  updateProfile: async (userData) => {
-    try {
-      // Make sure we're sending the correct data structure
-      const updateData = {
-        name: userData.name,
-        phone: userData.phone,
-        address: userData.address,
-        profileImage: userData.profileImage
-      };
-      
-      const response = await api.put('/auth/profile', updateData);
-      
-      if (response.data.user) {
-        // Update localStorage with new user data
-        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-        const updatedUser = { ...currentUser, ...response.data.user };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-      }
-      
-      return {
-        success: true,
-        user: response.data.user
-      };
-    } catch (error) {
-      console.error('Update profile error:', error);
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to update profile'
+ updateProfile: async (userData) => {
+  try {
+    console.log('📤 Updating profile with data:', userData);
+    
+    // Make sure we're sending the correct data structure
+    const updateData = {};
+    if (userData.name) updateData.name = userData.name;
+    if (userData.phone) updateData.phone = userData.phone;
+    if (userData.address) updateData.address = userData.address;
+    if (userData.profileImage !== undefined) {
+      updateData.profileImage = {
+        url: userData.profileImage?.url || '',
+        publicId: userData.profileImage?.publicId || ''
       };
     }
-  },
-  
+    
+    const response = await api.put('/auth/profile', updateData);
+    
+    console.log('📥 Update profile response:', response.data);
+    
+    if (response.data.user) {
+      // Update localStorage with new user data
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const updatedUser = { ...currentUser, ...response.data.user };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      console.log('✅ User updated in localStorage:', updatedUser);
+    }
+    
+    return {
+      success: true,
+      user: response.data.user
+    };
+  } catch (error) {
+    console.error('❌ Update profile error:', error);
+    console.error('Error response:', error.response?.data);
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to update profile'
+    };
+  }
+},
   changePassword: async (passwordData) => {
     try {
       const response = await api.put('/auth/change-password', passwordData);

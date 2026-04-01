@@ -19,7 +19,8 @@ const ImageUpload = ({ onUploadComplete, multiple = false, maxFiles = 5 }) => {
     });
     
     try {
-      const endpoint = multiple ? '/upload/multiple' : '/upload?type=product';
+      // Use the admin-only product upload endpoints
+      const endpoint = multiple ? '/upload/products/multiple' : '/upload/products';
       const response = await api.post(endpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -29,10 +30,12 @@ const ImageUpload = ({ onUploadComplete, multiple = false, maxFiles = 5 }) => {
         setUploadedImages(prev => [...prev, ...newImages]);
         onUploadComplete?.(newImages);
         toast.success(`${newImages.length} image(s) uploaded successfully`);
+      } else {
+        toast.error(response.data.message || 'Upload failed');
       }
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(error.response?.data?.message || 'Upload failed');
+      toast.error(error.response?.data?.message || 'Upload failed. Admin access required.');
     } finally {
       setUploading(false);
     }

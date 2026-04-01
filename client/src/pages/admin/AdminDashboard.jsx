@@ -15,9 +15,11 @@ import { productService } from '../../services/productService';
 import { orderService } from '../../services/orderService';
 import { userService } from '../../services/userService';
 import { useCurrencyContext } from '../../context/CurrencyContext';
+import { useAuthStore } from '../../store/authStore';
 
 const AdminDashboard = () => {
   const { formatPrice } = useCurrencyContext();
+  const { user } = useAuthStore();
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalOrders: 0,
@@ -26,6 +28,13 @@ const AdminDashboard = () => {
     pendingOrders: 0,
     lowStockProducts: 0
   });
+
+  // Debug admin access
+  useEffect(() => {
+    console.log('AdminDashboard - Current user:', user);
+    console.log('AdminDashboard - User role:', user?.role);
+    console.log('AdminDashboard - Is admin?', user?.role === 'admin');
+  }, [user]);
 
   // Fetch products
   const { data: productsData, isLoading: productsLoading } = useQuery({
@@ -121,7 +130,6 @@ const AdminDashboard = () => {
     );
   }
 
-  // Get recent orders safely
   const recentOrders = ordersData?.data?.orders?.slice(0, 5) || [];
 
   return (
@@ -131,7 +139,7 @@ const AdminDashboard = () => {
           Dashboard
         </h1>
         <p className="text-gray-600 dark:text-dark-textMuted">
-          Welcome back! Here's what's happening with your store today.
+          Welcome back, {user?.name}! Here's what's happening with your store today.
         </p>
       </div>
 
@@ -189,7 +197,7 @@ const AdminDashboard = () => {
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Total</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
-                </tr>
+                 </tr>
               </thead>
               <tbody>
                 {recentOrders.map((order) => (

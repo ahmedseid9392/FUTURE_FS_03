@@ -9,9 +9,14 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Protected routes (admin only)
-router.post('/', protect, admin, uploadSingle, uploadImage);
-router.post('/multiple', protect, admin, uploadMultiple, uploadMultipleImages);
+// Profile image upload - accessible by any authenticated user
+router.post('/profile', protect, uploadSingle, uploadImage);
+
+// Product images - admin only
+router.post('/products', protect, admin, uploadSingle, uploadImage);
+router.post('/products/multiple', protect, admin, uploadMultiple, uploadMultipleImages);
+
+// Delete image - admin only
 router.delete('/:publicId', protect, admin, deleteImage);
 
 export default router;

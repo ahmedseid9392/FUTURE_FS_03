@@ -172,7 +172,6 @@ export const getProfile = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Update user profile
  * @route   PUT /api/auth/profile
@@ -189,21 +188,42 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    const { name, phone, address } = req.body;
+    const { name, phone, address, profileImage } = req.body;
+
+    // Build update object
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+    if (address) updateData.address = address;
+    
+    // Handle profileImage update
+    if (profileImage) {
+      updateData.profileImage = {
+        url: profileImage.url || '',
+        publicId: profileImage.publicId || ''
+      };
+      console.log('Updating profile image:', updateData.profileImage);
+    }
 
     // Update user profile
-    const updatedUser = await UserService.updateUserProfile(req.user.id, {
-      name,
-      phone,
-      address
-    });
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
-      user: updatedUser
+      user: user.getPublicProfile()
     });
-
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({
@@ -213,7 +233,6 @@ export const updateProfile = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Change user password
  * @route   PUT /api/auth/change-password

@@ -1,12 +1,17 @@
 import cloudinary from '../config/cloudinary.js';
 
 /**
- * Upload single image (Profile or Single Product)
- * @route POST /api/upload
- * @access Private/Admin
+ * Upload single image (Profile or Product)
+ * @route POST /api/upload/profile
+ * @route POST /api/upload/products
+ * @access Private (profile) or Admin (products)
  */
 export const uploadImage = async (req, res) => {
   try {
+    console.log('📸 Upload request received');
+    console.log('File:', req.file ? 'File present' : 'No file');
+    console.log('URL path:', req.originalUrl);
+    
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -14,24 +19,34 @@ export const uploadImage = async (req, res) => {
       });
     }
 
-    // Determine folder based on request query
-    const folder = req.query.type === 'profile' ? 'jams-boutique/profiles' : 'jams-boutique/products';
+    // Determine folder based on route
+    let folder = 'jams-boutique/profiles';
+    let width = 400;
+    let height = 400;
+    
+    if (req.originalUrl.includes('/products')) {
+      folder = 'jams-boutique/products';
+      width = 800;
+      height = 800;
+    }
     
     // Convert buffer to base64
     const b64 = Buffer.from(req.file.buffer).toString('base64');
     const dataURI = `data:${req.file.mimetype};base64,${b64}`;
-
+    
+    console.log('📤 Uploading to Cloudinary...');
+    console.log('Folder:', folder);
+    
     // Upload to Cloudinary with specific folder
     const result = await cloudinary.uploader.upload(dataURI, {
       folder: folder,
       transformation: [
-        { width: req.query.type === 'profile' ? 400 : 800, 
-          height: req.query.type === 'profile' ? 400 : 800, 
-          crop: 'limit' 
-        },
+        { width, height, crop: 'limit' },
         { quality: 'auto' }
       ]
     });
+    
+    console.log('✅ Upload successful:', result.secure_url);
 
     res.status(200).json({
       success: true,
@@ -44,7 +59,7 @@ export const uploadImage = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('❌ Upload error:', error);
     res.status(500).json({
       success: false,
       message: 'Upload failed',
@@ -55,7 +70,7 @@ export const uploadImage = async (req, res) => {
 
 /**
  * Upload multiple product images
- * @route POST /api/upload/multiple
+ * @route POST /api/upload/products/multiple
  * @access Private/Admin
  */
 export const uploadMultipleImages = async (req, res) => {

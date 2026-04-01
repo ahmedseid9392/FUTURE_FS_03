@@ -144,17 +144,28 @@ const ProfilePage = () => {
  // Update the handleImageUpload function
 const handleImageUpload = async (image) => {
   try {
-    // First, get current user data
-    const currentUser = user;
+    console.log('📸 Image uploaded:', image);
+    
+    if (!image) {
+      // Image was removed
+      const result = await authService.updateProfile({ 
+        profileImage: { url: '', publicId: '' }
+      });
+      if (result.success) {
+        updateUser(result.user);
+        setProfileImage(null);
+        toast.success('Profile image removed');
+      }
+      return;
+    }
     
     // Update profile with new image
     const result = await authService.updateProfile({ 
-      ...currentUser,
       profileImage: image 
     });
     
     if (result.success) {
-      // Update local store with new user data
+      console.log('✅ Profile updated with image:', result.user.profileImage);
       updateUser(result.user);
       setProfileImage(result.user.profileImage);
       toast.success('Profile image updated!');
