@@ -15,7 +15,7 @@ import ShopPage from './pages/ShopPage';
 // import CheckoutPage from './pages/CheckoutPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-// import ProfilePage from './pages/ProfilePage';
+import ProfilePage from './pages/ProfilePage';
 // import OrdersPage from './pages/OrdersPage';
 // import AboutPage from './pages/AboutPage';
 // import ContactPage from './pages/ContactPage';
@@ -25,6 +25,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
+import AddProduct from './pages/admin/AddProduct';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,7 @@ function App() {
     <AdminLayout />
   </ProtectedRoute>
 }>
+  <Route path="products/new" element={<AddProduct />} />
   <Route index element={<AdminDashboard />} />
   <Route path="products" element={<AdminProducts />} />
   <Route path="orders" element={<AdminOrders />} />
@@ -87,16 +89,16 @@ function App() {
                     <RegisterPage />
                   </ProtectedRoute>
                 } />
-              {/* <Route path="/profile" element={
+               <Route path="/profile" element={
                   <ProtectedRoute requireAuth={true}>
                     <ProfilePage />
                   </ProtectedRoute>
                 } />
-                <Route path="/orders" element={
+                {/* <Route path="/orders" element={
                   <ProtectedRoute requireAuth={true}>
                     <OrdersPage />
                   </ProtectedRoute>
-                } /> */}
+                } />  */}
               {/* <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />  */}
             </Routes>

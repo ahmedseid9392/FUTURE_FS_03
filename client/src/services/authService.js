@@ -88,10 +88,21 @@ export const authService = {
   
   updateProfile: async (userData) => {
     try {
-      const response = await api.put('/auth/profile', userData);
+      // Make sure we're sending the correct data structure
+      const updateData = {
+        name: userData.name,
+        phone: userData.phone,
+        address: userData.address,
+        profileImage: userData.profileImage
+      };
+      
+      const response = await api.put('/auth/profile', updateData);
       
       if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        // Update localStorage with new user data
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const updatedUser = { ...currentUser, ...response.data.user };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
       }
       
       return {
@@ -99,6 +110,7 @@ export const authService = {
         user: response.data.user
       };
     } catch (error) {
+      console.error('Update profile error:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to update profile'

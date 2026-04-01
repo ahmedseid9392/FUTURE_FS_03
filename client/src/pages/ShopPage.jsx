@@ -19,28 +19,44 @@ const ShopPage = () => {
   
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const { currencyCode, formatPrice, convertPrice } = useCurrencyContext();
   
   // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
-      const result = await productService.getCategories();
-      if (result.success) {
-        setCategories(result.data.categories);
+      setCategoriesLoading(true);
+      try {
+        const result = await productService.getCategories();
+        console.log('Categories API response:', result);
+        
+        if (result.success && result.data && result.data.categories) {
+          setCategories(result.data.categories);
+        } else if (result.categories) {
+          setCategories(result.categories);
+        } else {
+          setCategories([]);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        setCategories([]);
+      } finally {
+        setCategoriesLoading(false);
       }
     };
     fetchCategories();
   }, []);
   
   // Fetch products
-  const { data, isLoading, refetch } = useQuery({
+  const { data: productsResult, isLoading: productsLoading, refetch } = useQuery({
     queryKey: ['products', filters],
     queryFn: () => productService.getAll(filters),
     enabled: true
   });
   
-  const products = data?.success ? data.data.products : [];
-  const pagination = data?.success ? data.data.pagination : null;
+  // Safely extract products and pagination
+  const products = productsResult?.success ? (productsResult.data?.products || []) : [];
+  const pagination = productsResult?.success ? (productsResult.data?.pagination || { page: 1, pages: 1, total: 0 }) : { page: 1, pages: 1, total: 0 };
   
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
@@ -59,7 +75,6 @@ const ShopPage = () => {
   
   const handleSearch = (e) => {
     e.preventDefault();
-    // Search is already handled by the filter change
     refetch();
   };
   
@@ -69,6 +84,8 @@ const ShopPage = () => {
     { value: '-price', label: 'Price: High to Low' },
     { value: 'name', label: 'Name: A to Z' }
   ];
+  
+  const isLoading = productsLoading || categoriesLoading;
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -154,8 +171,9 @@ const ShopPage = () => {
               >
                 <option value="">All Categories</option>
                 {categories.map(cat => (
-                  <option key={cat.name} value={cat.name}>
-                    {cat.name.charAt(0).toUpperCase() + cat.name.slice(1)} ({cat.count})
+                  <option key={cat.name || cat} value={cat.name || cat}>
+                    {typeof cat === 'object' ? (cat.name?.charAt(0).toUpperCase() + cat.name?.slice(1)) : (cat?.charAt(0).toUpperCase() + cat?.slice(1))} 
+                    {cat.count ? ` (${cat.count})` : ''}
                   </option>
                 ))}
               </select>

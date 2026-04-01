@@ -195,6 +195,8 @@ const LoginPage = () => {
           <div className="text-xs text-center text-gray-500 dark:text-dark-textMuted space-y-1">
             <p>Email: test@example.com</p>
             <p>Password: password123</p>
+            <p>admin:admin@jamsboutique.com</p>
+            <p>pass:Admin@123</p>
             <p className="text-boutique-primary text-[10px] mt-1">* Create an account first using register page</p>
           </div>
         </div>

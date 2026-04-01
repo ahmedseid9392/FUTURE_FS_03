@@ -148,10 +148,10 @@ export const login = async (req, res) => {
  * @route   GET /api/auth/profile
  * @access  Private
  */
+// In getProfile and login functions, make sure profileImage is included
 export const getProfile = async (req, res) => {
   try {
-    // req.user is set by auth middleware
-    const user = await UserService.findUserById(req.user.id);
+    const user = await User.findById(req.user.id);
     
     if (!user) {
       return res.status(404).json({
@@ -162,15 +162,13 @@ export const getProfile = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      user
+      user: user.getPublicProfile() // Make sure this includes profileImage
     });
-
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
+      message: 'Server error'
     });
   }
 };

@@ -14,13 +14,79 @@ export const productService = {
       if (filters.limit) params.append('limit', filters.limit);
       
       const response = await api.get(`/products?${params.toString()}`);
-      return response.data;
+      
+      // Handle different response structures
+      if (response.data.success) {
+        return {
+          success: true,
+          data: {
+            products: response.data.products || [],
+            pagination: response.data.pagination || { page: 1, pages: 1, total: 0 }
+          }
+        };
+      }
+      
+      // If response doesn't have success field but has products directly
+      if (response.data.products) {
+        return {
+          success: true,
+          data: {
+            products: response.data.products || [],
+            pagination: response.data.pagination || { page: 1, pages: 1, total: response.data.products?.length || 0 }
+          }
+        };
+      }
+      
+      return {
+        success: false,
+        data: { products: [], pagination: { page: 1, pages: 1, total: 0 } },
+        message: response.data.message || 'Failed to fetch products'
+      };
     } catch (error) {
       console.error('Get products error:', error);
       return { 
         success: false, 
         data: { products: [], pagination: { page: 1, pages: 1, total: 0 } },
         message: error.response?.data?.message || 'Failed to fetch products' 
+      };
+    }
+  },
+  
+  getCategories: async () => {
+    try {
+      const response = await api.get('/products/categories/all');
+      
+      // Handle response structure
+      if (response.data.success) {
+        return {
+          success: true,
+          data: {
+            categories: response.data.categories || []
+          }
+        };
+      }
+      
+      // If response has categories directly
+      if (response.data.categories) {
+        return {
+          success: true,
+          data: {
+            categories: response.data.categories
+          }
+        };
+      }
+      
+      return {
+        success: false,
+        data: { categories: [] },
+        message: response.data.message || 'Failed to fetch categories'
+      };
+    } catch (error) {
+      console.error('Get categories error:', error);
+      return { 
+        success: false, 
+        data: { categories: [] },
+        message: error.response?.data?.message || 'Failed to fetch categories' 
       };
     }
   },
@@ -41,7 +107,10 @@ export const productService = {
   getFeatured: async (limit = 8) => {
     try {
       const response = await api.get(`/products/featured?limit=${limit}`);
-      return response.data;
+      if (response.data.success) {
+        return { success: true, data: { products: response.data.products || [] } };
+      }
+      return { success: false, data: { products: [] } };
     } catch (error) {
       console.error('Get featured products error:', error);
       return { success: false, data: { products: [] } };
@@ -51,20 +120,13 @@ export const productService = {
   getByCategory: async (category, limit = 20) => {
     try {
       const response = await api.get(`/products/category/${category}?limit=${limit}`);
-      return response.data;
+      if (response.data.success) {
+        return { success: true, data: { products: response.data.products || [] } };
+      }
+      return { success: false, data: { products: [] } };
     } catch (error) {
       console.error('Get by category error:', error);
       return { success: false, data: { products: [] } };
-    }
-  },
-  
-  getCategories: async () => {
-    try {
-      const response = await api.get('/products/categories/all');
-      return response.data;
-    } catch (error) {
-      console.error('Get categories error:', error);
-      return { success: false, data: { categories: [] } };
     }
   },
   

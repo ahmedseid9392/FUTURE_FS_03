@@ -79,21 +79,28 @@ export const useAuthStore = create(
       
       checkAuth: () => {
         const token = localStorage.getItem('token');
-        const user = localStorage.getItem('user');
+        const userStr = localStorage.getItem('user');
         
-        if (token && user) {
-          set({ 
-            token, 
-            user: JSON.parse(user), 
-            isAuthenticated: true 
-          });
+        if (token && userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            set({ 
+              token, 
+              user, 
+              isAuthenticated: true 
+            });
+          } catch (error) {
+            console.error('Error parsing user:', error);
+            set({ user: null, token: null, isAuthenticated: false });
+          }
         } else {
           set({ user: null, token: null, isAuthenticated: false });
         }
       },
       
       updateUser: (userData) => {
-        const updatedUser = { ...get().user, ...userData };
+        const currentUser = get().user;
+        const updatedUser = { ...currentUser, ...userData };
         set({ user: updatedUser });
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }

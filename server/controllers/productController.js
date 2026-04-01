@@ -334,6 +334,7 @@ export const addReview = async (req, res) => {
  * @route   GET /api/products/categories/all
  * @access  Public
  */
+// In server/controllers/productController.js
 export const getCategories = async (req, res) => {
   try {
     const categories = await Product.distinct('category', { isActive: true });
@@ -354,8 +355,7 @@ export const getCategories = async (req, res) => {
     console.error('Get categories error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
+      message: 'Server error'
     });
   }
 };
