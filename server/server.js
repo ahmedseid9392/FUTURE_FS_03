@@ -4,11 +4,14 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import session from 'express-session';
+import passport from 'passport';
 import connectDB from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
-import uploadRoutes from './routes/uploadRoutes.js'; // Add this import
+import uploadRoutes from './routes/uploadRoutes.js';
+import './config/passport.js'; // Import passport config
 
 // Load environment variables
 dotenv.config();
@@ -19,19 +22,34 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
+// Session middleware (required for passport)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your_session_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
 // Middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(cors({
-  origin: '*',
+  origin: ['http://localhost:5173', 'http://localhost:5000'],
   credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// Routes - Register all routes
+// Routes
 console.log('📌 Registering routes...');
 
 app.use('/api/auth', authRoutes);
@@ -43,7 +61,7 @@ console.log('✅ Product routes registered at /api/products');
 app.use('/api/orders', orderRoutes);
 console.log('✅ Order routes registered at /api/orders');
 
-app.use('/api/upload', uploadRoutes); // Add this line
+app.use('/api/upload', uploadRoutes);
 console.log('✅ Upload routes registered at /api/upload');
 
 // Basic test route
@@ -53,12 +71,11 @@ app.get('/api/health', (req, res) => {
     status: 'OK', 
     message: 'Server is running with ES Modules',
     database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
-    timestamp: new Date().toISOString(),
-    routes: ['/api/auth', '/api/products', '/api/orders', '/api/upload']
+    timestamp: new Date().toISOString()
   });
 });
 
-// 404 handler - This should be AFTER all routes
+// 404 handler
 app.use((req, res) => {
   console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ 
@@ -89,36 +106,6 @@ app.listen(PORT, () => {
   console.log(`📦 Orders routes: http://localhost:${PORT}/api/orders`);
   console.log(`📸 Upload routes: http://localhost:${PORT}/api/upload`);
   console.log(`📦 Using ES Module syntax\n`);
-  
-  // Log all registered routes
-  console.log('📋 Registered Routes:');
-  console.log('  GET    /api/health');
-  console.log('  POST   /api/auth/register');
-  console.log('  POST   /api/auth/login');
-  console.log('  GET    /api/auth/profile');
-  console.log('  PUT    /api/auth/profile');
-  console.log('  PUT    /api/auth/change-password');
-  console.log('  GET    /api/auth/users (admin)');
-  console.log('  GET    /api/products');
-  console.log('  GET    /api/products/featured');
-  console.log('  GET    /api/products/categories/all');
-  console.log('  GET    /api/products/category/:category');
-  console.log('  GET    /api/products/:id');
-  console.log('  POST   /api/products (admin)');
-  console.log('  PUT    /api/products/:id (admin)');
-  console.log('  DELETE /api/products/:id (admin)');
-  console.log('  POST   /api/products/:id/reviews');
-  console.log('  POST   /api/orders');
-  console.log('  GET    /api/orders/my-orders');
-  console.log('  GET    /api/orders/:id');
-  console.log('  PUT    /api/orders/:id/cancel');
-  console.log('  GET    /api/orders (admin)');
-  console.log('  GET    /api/orders/stats/overview (admin)');
-  console.log('  PUT    /api/orders/:id/status (admin)');
-  console.log('  PUT    /api/orders/:id/payment (admin)');
-  console.log('  POST   /api/upload (admin)');
-  console.log('  POST   /api/upload/multiple (admin)');
-  console.log('  DELETE /api/upload/:publicId (admin)\n');
 });
 
 export default app;

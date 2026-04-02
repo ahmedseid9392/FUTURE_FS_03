@@ -15,7 +15,8 @@ import {
   FiStar,
   FiChevronLeft,
   FiChevronRight,
-  FiLock  // Add this import
+  FiLock,
+  FiMaximize2
 } from 'react-icons/fi';
 import { useCartStore } from '../store/cartStore';
 import { useCurrencyContext } from '../context/CurrencyContext';
@@ -23,19 +24,25 @@ import { useAuthStore } from '../store/authStore';
 import { productService } from '../services/productService';
 import toast from 'react-hot-toast';
 
+// Import ImageLightbox if you have it, otherwise comment out
+//import ImageLightbox from '../components/common/ImageLightbox';
+
 const ProductPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const addToCart = useCartStore((state) => state.addItem);
+  const { items, addToCart } = useCartStore();
   const { formatPrice } = useCurrencyContext();
-  const { isAuthenticated } = useAuthStore(); // Add this
+  const { isAuthenticated } = useAuthStore();
   
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const [activeTab, setActiveTab] = useState('description');
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   
   // Fetch product
   const { data, isLoading, error } = useQuery({
@@ -44,7 +51,15 @@ const ProductPage = () => {
     enabled: !!id
   });
   
-  const product = data?.success ? data.data.product : null;
+  // FIXED: Properly extract product from response
+  const product = data?.data?.product || data?.product || null;
+  
+  // Debug logging
+  console.log('API Response:', data);
+  console.log('Extracted Product:', product);
+  
+  // Check if product is already in cart
+  const isInCart = product ? items.some(item => item._id === product._id) : false;
   
   // Reset selections when product changes
   useEffect(() => {
@@ -57,10 +72,14 @@ const ProductPage = () => {
   }, [product]);
   
   const handleAddToCart = () => {
-    // Check if user is logged in
     if (!isAuthenticated) {
       toast.error('Please login to add items to cart');
       setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    
+    if (isInCart) {
+      toast.error(`${product.name} is already in your cart!`);
       return;
     }
     
@@ -80,9 +99,7 @@ const ProductPage = () => {
     }
     
     setIsAdding(true);
-    
     addToCart(product, quantity, selectedSize, selectedColor);
-    
     toast.success(`${product.name} added to cart!`);
     setTimeout(() => setIsAdding(false), 500);
   };
@@ -93,8 +110,26 @@ const ProductPage = () => {
       setTimeout(() => navigate('/login'), 1500);
       return;
     }
+    
+    if (isInCart) {
+      toast.error(`${product.name} is already in your cart. Proceed to checkout.`);
+      setTimeout(() => navigate('/cart'), 500);
+      return;
+    }
+    
     handleAddToCart();
     setTimeout(() => navigate('/cart'), 500);
+  };
+  
+  const handleLike = () => {
+    if (!isAuthenticated) {
+      toast.error('Please login to like products');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    
+    setIsLiked(!isLiked);
+    toast.success(isLiked ? 'Removed from wishlist' : 'Added to wishlist');
   };
   
   const handleQuantityChange = (type) => {
@@ -103,6 +138,11 @@ const ProductPage = () => {
     } else if (type === 'decrease' && quantity > 1) {
       setQuantity(prev => prev - 1);
     }
+  };
+  
+  const openLightbox = (index) => {
+    setLightboxIndex(index);
+    setIsLightboxOpen(true);
   };
   
   if (isLoading) {
@@ -139,7 +179,7 @@ const ProductPage = () => {
   const mainImage = product.images?.[selectedImage] || product.images?.[0] || { url: 'https://via.placeholder.com/600' };
   const discount = product.discountPercentage || 0;
   const inStock = product.stock > 0;
-  const lowStock = product.stock > 0 && product.stock <= 5;
+  const allImages = product.images || [mainImage];
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -155,18 +195,27 @@ const ProductPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Image Gallery */}
         <div>
-          <div className="relative overflow-hidden rounded-lg bg-gray-100 dark:bg-dark-card">
+          {/* Main Image with Click to Zoom */}
+          <div 
+            className="relative overflow-hidden rounded-lg bg-gray-100 dark:bg-dark-card cursor-pointer group"
+            onClick={() => openLightbox(selectedImage)}
+          >
             <img
               src={mainImage.url}
               alt={product.name}
-              className="w-full h-[500px] object-cover"
+              className="w-full h-[500px] object-cover transition-transform duration-300 group-hover:scale-105"
             />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <div className="bg-white/90 rounded-full p-3">
+                <FiMaximize2 className="w-6 h-6 text-gray-800" />
+              </div>
+            </div>
           </div>
           
           {/* Thumbnails */}
-          {product.images && product.images.length > 1 && (
+          {allImages.length > 1 && (
             <div className="flex gap-2 mt-4">
-              {product.images.map((img, idx) => (
+              {allImages.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
@@ -235,9 +284,6 @@ const ProductPage = () => {
                 <span className="text-green-600 dark:text-green-400 font-medium">
                   In Stock
                 </span>
-                {lowStock && (
-                  <span className="text-orange-600 text-sm">(Only {product.stock} left)</span>
-                )}
               </>
             ) : (
               <>
@@ -246,6 +292,16 @@ const ProductPage = () => {
               </>
             )}
           </div>
+          
+          {/* In Cart Alert */}
+          {isInCart && (
+            <div className="bg-green-100 dark:bg-green-900/20 border border-green-500 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                <FiCheck className="w-5 h-5" />
+                <span className="text-sm">This item is already in your cart</span>
+              </div>
+            </div>
+          )}
           
           {/* Size Selection */}
           {product.sizes && product.sizes.length > 0 && (
@@ -310,7 +366,7 @@ const ProductPage = () => {
               >
                 <FiPlus className="w-4 h-4" />
               </button>
-              <span className="text-sm text-gray-500">Available: {product.stock} items</span>
+              <span className="text-sm text-gray-500">Max: {product.stock}</span>
             </div>
           </div>
           
@@ -318,16 +374,28 @@ const ProductPage = () => {
           <div className="flex gap-4 pt-4">
             <button
               onClick={handleAddToCart}
-              disabled={!inStock || isAdding}
-              className="flex-1 btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+              disabled={!inStock || isAdding || isInCart}
+              className={`flex-1 py-3 flex items-center justify-center gap-2 rounded-md transition-all ${
+                isInCart 
+                  ? 'bg-gray-400 cursor-not-allowed text-white'
+                  : 'btn-primary disabled:opacity-50'
+              }`}
             >
               {isAdding ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : isInCart ? (
+                <>
+                  <FiCheck className="w-5 h-5" />
+                  Already in Cart
+                </>
               ) : (
-                <FiShoppingBag className="w-5 h-5" />
+                <>
+                  <FiShoppingBag className="w-5 h-5" />
+                  Add to Cart
+                </>
               )}
-              Add to Cart
             </button>
+            
             <button
               onClick={handleBuyNow}
               disabled={!inStock}
@@ -335,8 +403,16 @@ const ProductPage = () => {
             >
               Buy Now
             </button>
-            <button className="p-3 border rounded-md hover:bg-gray-100">
-              <FiHeart className="w-5 h-5" />
+            
+            <button
+              onClick={handleLike}
+              className={`p-3 border rounded-md transition-all hover:scale-105 ${
+                isLiked 
+                  ? 'bg-red-500 text-white border-red-500'
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              <FiHeart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
             </button>
           </div>
           
@@ -413,6 +489,48 @@ const ProductPage = () => {
           )}
         </div>
       </div>
+      
+      {/* Simple Lightbox Modal (without external dependency) */}
+      {isLightboxOpen && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={() => setIsLightboxOpen(false)}>
+          <button
+            onClick={() => setIsLightboxOpen(false)}
+            className="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 z-10"
+          >
+            ×
+          </button>
+          
+          {allImages.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+                }}
+                className="absolute left-4 text-white text-4xl hover:text-gray-300 z-10"
+              >
+                ‹
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((prev) => (prev + 1) % allImages.length);
+                }}
+                className="absolute right-4 text-white text-4xl hover:text-gray-300 z-10"
+              >
+                ›
+              </button>
+            </>
+          )}
+          
+          <img
+            src={allImages[lightboxIndex]?.url}
+            alt="Product"
+            className="max-w-[90vw] max-h-[90vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

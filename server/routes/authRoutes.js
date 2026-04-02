@@ -1,4 +1,6 @@
 import express from 'express';
+import passport from 'passport';
+import jwt from 'jsonwebtoken';
 import {
   register,
   login,
@@ -17,16 +19,34 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Debug middleware to log all requests
-router.use((req, res, next) => {
-  console.log(`📥 ${req.method} ${req.originalUrl}`);
-  next();
-});
-
 // Public routes
-console.log('Setting up auth routes...');
 router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
+
+// Google OAuth routes
+router.get('/google', passport.authenticate('google', { 
+  scope: ['profile', 'email'],
+  prompt: 'select_account'
+}));
+
+router.get('/google/callback', 
+  passport.authenticate('google', { 
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=google_auth_failed`,
+    session: true
+  }),
+  (req, res) => {
+    // Generate JWT token for the user
+    const token = jwt.sign(
+      { id: req.user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+    
+    // Redirect to frontend with token
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user.getPublicProfile()))}`);
+  }
+);
 
 // Protected routes
 router.get('/profile', protect, getProfile);
@@ -35,7 +55,5 @@ router.put('/change-password', protect, validatePasswordChange, changePassword);
 
 // Admin routes
 router.get('/users', protect, admin, getAllUsers);
-
-console.log('✅ Auth routes configured');
 
 export default router;

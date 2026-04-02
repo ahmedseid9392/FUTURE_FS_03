@@ -1,5 +1,6 @@
 import Navbar from './Navbar';
 import Footer from './Footer';
+import ProfileCompletionAlert from '../profile/ProfileCompletionAlert';
 
 const Layout = ({ children }) => {
   return (
@@ -9,6 +10,7 @@ const Layout = ({ children }) => {
         {children}
       </main>
       <Footer />
+      <ProfileCompletionAlert />
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { authService } from '../services/authService';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
+import GoogleLoginButton from '../components/auth/GoogleLoginButton';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -123,6 +124,20 @@ const RegisterPage = () => {
             Join Jams Boutique and discover unique fashion pieces
           </p>
         </div>
+        {/* Google Sign Up Button */}
+     <GoogleLoginButton />
+     
+{/* Divider */}
+<div className="relative">
+  <div className="absolute inset-0 flex items-center">
+    <div className="w-full border-t border-gray-300 dark:border-dark-border"></div>
+  </div>
+  <div className="relative flex justify-center text-sm">
+    <span className="px-2 bg-white dark:bg-dark-card text-gray-500 dark:text-dark-textMuted">
+      Or sign up with email
+    </span>
+  </div>
+</div>
         
         {/* Form */}
         <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)}>

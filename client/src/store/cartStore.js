@@ -6,31 +6,40 @@ export const useCartStore = create(
     (set, get) => ({
       items: [],
       
-      addItem: (product, quantity = 1, size = '', color = '') => {
-        const currentItems = get().items;
-        const existingItem = currentItems.find(
-          item => item._id === product._id && item.size === size && item.color === color
-        );
-        
-        if (existingItem) {
-          set({
-            items: currentItems.map(item =>
-              item._id === product._id && item.size === size && item.color === color
-                ? { ...item, quantity: item.quantity + quantity }
-                : item
-            )
-          });
-        } else {
-          set({
-            items: [...currentItems, {
-              ...product,
-              quantity,
-              selectedSize: size,
-              selectedColor: color
-            }]
-          });
-        }
-      },
+     addItem: (product, quantity = 1, size = '', color = '') => {
+  const currentItems = get().items;
+  
+  // Check if item already exists with same variant
+  const existingItem = currentItems.find(
+    item => item._id === product._id && item.selectedSize === size && item.selectedColor === color
+  );
+  
+  if (existingItem) {
+    // Update quantity if already exists
+    const newQuantity = existingItem.quantity + quantity;
+    if (newQuantity > product.stock) {
+      toast.error(`Cannot add more than ${product.stock} items`);
+      return;
+    }
+    set({
+      items: currentItems.map(item =>
+        item._id === product._id && item.selectedSize === size && item.selectedColor === color
+          ? { ...item, quantity: newQuantity }
+          : item
+      )
+    });
+  } else {
+    // Add new item
+    set({
+      items: [...currentItems, {
+        ...product,
+        quantity,
+        selectedSize: size,
+        selectedColor: color
+      }]
+    });
+  }
+},
       
       removeItem: (productId, size, color) => {
         set({

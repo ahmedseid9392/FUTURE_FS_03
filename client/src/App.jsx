@@ -7,12 +7,15 @@ import { ThemeProvider } from './components/common/ThemeProvider';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { CurrencyProvider } from './context/CurrencyContext';
+
+import AuthCallback from './pages/AuthCallback';
+
 // Pages (to be created)
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
  import ProductPage from './pages/ProductPage';
  import CartPage from './pages/CartPage';
-// import CheckoutPage from './pages/CheckoutPage';
+ import CheckoutPage from './pages/CheckoutPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
@@ -26,6 +29,7 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
 import AddProduct from './pages/admin/AddProduct';
+import AdminSettings from './pages/admin/AdminSettings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,8 +55,9 @@ function App() {
         <BrowserRouter>
           <Layout>
             <Routes>
+              <Route path="/auth/callback" element={<AuthCallback />} />
 
-              <Route path="/admin" element={
+        <Route path="/admin" element={
   <ProtectedRoute requireAuth={true}>
     <AdminLayout />
   </ProtectedRoute>
@@ -62,6 +67,7 @@ function App() {
   <Route path="products" element={<AdminProducts />} />
   <Route path="orders" element={<AdminOrders />} />
   <Route path="users" element={<AdminUsers />} />
+  <Route path="settings" element={<AdminSettings />} />
 </Route>
               <Route path="/" element={<HomePage />} />
               <Route path="/shop" element={<ShopPage />} />
@@ -72,11 +78,11 @@ function App() {
                     <CartPage />
                   </ProtectedRoute>
                 } />
-                {/* <Route path="/checkout" element={
+                <Route path="/checkout" element={
                   <ProtectedRoute requireAuth={true}>
                     <CheckoutPage />
                   </ProtectedRoute>
-                } /> */}
+                } />
 
                {/* Auth Routes - Redirect if already logged in */}
                 <Route path="/login" element={

@@ -63,6 +63,11 @@ const userSchema = new mongoose.Schema({
   isEmailVerified: {
     type: Boolean,
     default: false
+  },
+   googleId: {
+    type: String,
+    sparse: true,
+    unique: true
   }
 }, {
   timestamps: true,

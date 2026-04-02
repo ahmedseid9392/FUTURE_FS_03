@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { 
   FiPlus, 
   FiEdit2, 
@@ -11,11 +10,20 @@ import {
 } from 'react-icons/fi';
 import { productService } from '../../services/productService';
 import { useCurrencyContext } from '../../context/CurrencyContext';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
+import ProductFormModal from '../../components/admin/ProductFormModal';
 import toast from 'react-hot-toast';
+
+import CurrencyToggle from '../../components/common/CurrencyToggle';
 
 const AdminProducts = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productToDelete, setProductToDelete] = useState(null);
+  
   const queryClient = useQueryClient();
   const { formatPrice } = useCurrencyContext();
 
@@ -31,6 +39,8 @@ const AdminProducts = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-products']);
       toast.success('Product deleted successfully');
+      setIsDeleteModalOpen(false);
+      setProductToDelete(null);
     },
     onError: () => {
       toast.error('Failed to delete product');
@@ -40,10 +50,31 @@ const AdminProducts = () => {
   const products = data?.success ? data.data.products : [];
   const pagination = data?.success ? data.data.pagination : null;
 
-  const handleDelete = (id, name) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      deleteMutation.mutate(id);
+  const handleDelete = (product) => {
+    setProductToDelete(product);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (productToDelete) {
+      deleteMutation.mutate(productToDelete._id);
     }
+  };
+
+  const handleEdit = (product) => {
+    setSelectedProduct(product);
+    setIsFormModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedProduct(null);
+    setIsFormModalOpen(true);
+  };
+
+  const handleFormSuccess = () => {
+    queryClient.invalidateQueries(['admin-products']);
+    setIsFormModalOpen(false);
+    setSelectedProduct(null);
   };
 
   if (isLoading) {
@@ -65,11 +96,12 @@ const AdminProducts = () => {
           <p className="text-gray-600 dark:text-dark-textMuted">
             Manage your product catalog
           </p>
+            <CurrencyToggle />
         </div>
-        <Link to="/admin/products/new" className="btn-primary flex items-center gap-2">
+        <button onClick={handleAddNew} className="btn-primary flex items-center gap-2">
           <FiPlus className="w-4 h-4" />
           Add New Product
-        </Link>
+        </button>
       </div>
 
       {/* Search Bar */}
@@ -113,10 +145,10 @@ const AdminProducts = () => {
                         <p className="text-xs text-gray-500">{product._id?.slice(-8)}</p>
                       </div>
                     </div>
-                  </td>
+                   </td>
                   <td className="py-3 px-4 font-medium text-boutique-primary">
                     {formatPrice(product.price)}
-                  </td>
+                   </td>
                   <td className="py-3 px-4">
                     <span className={`text-sm ${product.stock <= 5 ? 'text-red-600' : 'text-gray-600'}`}>
                       {product.stock} units
@@ -127,10 +159,10 @@ const AdminProducts = () => {
                     {product.stock === 0 && (
                       <span className="ml-2 text-xs text-red-600">(Out of Stock)</span>
                     )}
-                  </td>
+                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600">
                     {product.category}
-                  </td>
+                   </td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       product.isActive
@@ -139,27 +171,29 @@ const AdminProducts = () => {
                     }`}>
                       {product.isActive ? 'Active' : 'Inactive'}
                     </span>
-                  </td>
+                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <Link
-                        to={`/admin/products/${product._id}/edit`}
+                      <button
+                        onClick={() => handleEdit(product)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit Product"
                       >
                         <FiEdit2 className="w-4 h-4" />
-                      </Link>
+                      </button>
                       <button
-                        onClick={() => handleDelete(product._id, product.name)}
+                        onClick={() => handleDelete(product)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete Product"
                       >
                         <FiTrash2 className="w-4 h-4" />
                       </button>
                     </div>
-                  </td>
-                </tr>
+                   </td>
+                 </tr>
               ))}
             </tbody>
-          </table>
+           </table>
         </div>
 
         {products.length === 0 && (
@@ -169,9 +203,9 @@ const AdminProducts = () => {
               No products found
             </h3>
             <p className="text-gray-500 mb-6">Start by adding your first product</p>
-            <Link to="/admin/products/new" className="btn-primary">
+            <button onClick={handleAddNew} className="btn-primary">
               Add New Product
-            </Link>
+            </button>
           </div>
         )}
 
@@ -181,7 +215,7 @@ const AdminProducts = () => {
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-4 py-2 border rounded-md disabled:opacity-50"
+              className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-dark-surface"
             >
               Previous
             </button>
@@ -191,13 +225,39 @@ const AdminProducts = () => {
             <button
               onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
               disabled={page === pagination.pages}
-              className="px-4 py-2 border rounded-md disabled:opacity-50"
+              className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-dark-surface"
             >
               Next
             </button>
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setProductToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${productToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
+
+      {/* Add/Edit Product Modal */}
+      <ProductFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => {
+          setIsFormModalOpen(false);
+          setSelectedProduct(null);
+        }}
+        product={selectedProduct}
+        onSuccess={handleFormSuccess}
+      />
     </div>
   );
 };

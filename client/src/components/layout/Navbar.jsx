@@ -5,7 +5,7 @@ import { FiShoppingBag, FiLogOut, FiUser, FiPackage, FiClipboard } from 'react-i
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import ThemeToggle from '../common/ThemeToggle';
-import CurrencyToggle from '../common/CurrencyToggle';
+//import CurrencyToggle from '../common/CurrencyToggle';
 import UserAvatar from '../common/UserAvatar';
 
 const Navbar = () => {
@@ -78,20 +78,26 @@ const Navbar = () => {
           {/* Icons */}
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            <CurrencyToggle />
+            {/* <CurrencyToggle /> */}
             
-            <Link to="/cart" className="relative">
-              <FiShoppingBag className="w-5 h-5 text-gray-700 dark:text-dark-text hover:text-boutique-primary transition-colors" />
-              {cartItemsCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-boutique-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartItemsCount}
-                </span>
-              )}
-            </Link>
+            {/* Cart Icon - Only for customers (not admin) */}
+            {isAuthenticated && user?.role === 'customer' && (
+              <Link to="/cart" className="relative">
+                <FiShoppingBag className="w-5 h-5 text-gray-700 dark:text-dark-text hover:text-boutique-primary transition-colors" />
+                {cartItemsCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-boutique-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {cartItemsCount}
+                  </span>
+                )}
+              </Link>
+            )}
             
-            {/* User Dropdown with Avatar - CLICK TO OPEN */}
+            {/* User Dropdown with Avatar */}
             {isAuthenticated && user ? (
-              <div className="relative" ref={dropdownRef}>
+              <div 
+                className="relative" 
+                ref={dropdownRef}
+              >
                 <button 
                   onClick={toggleDropdown}
                   className="flex items-center space-x-2 p-1 rounded-full hover:ring-2 hover:ring-boutique-primary transition-all focus:outline-none"
@@ -115,10 +121,12 @@ const Navbar = () => {
                         <div>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
                           <p className="text-xs text-gray-500 dark:text-dark-textMuted">{user.email}</p>
+                          <p className="text-xs text-boutique-primary mt-1 capitalize">{user.role}</p>
                         </div>
                       </div>
                     </div>
                     
+                    {/* Customer Links */}
                     <Link
                       to="/profile"
                       className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-border transition-colors"
@@ -127,6 +135,18 @@ const Navbar = () => {
                       <FiUser className="w-4 h-4" />
                       My Profile
                     </Link>
+                    
+                    {/* Cart link for customers in dropdown */}
+                    {user.role === 'customer' && (
+                      <Link
+                        to="/cart"
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-border transition-colors"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <FiShoppingBag className="w-4 h-4" />
+                        My Cart ({cartItemsCount})
+                      </Link>
+                    )}
                     
                     <Link
                       to="/orders"
@@ -137,15 +157,20 @@ const Navbar = () => {
                       My Orders
                     </Link>
                     
+                    {/* Admin Links - Only for admin */}
                     {user.role === 'admin' && (
-                      <Link
-                        to="/admin"
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-border transition-colors"
-                        onClick={() => setIsDropdownOpen(false)}
-                      >
-                        <FiPackage className="w-4 h-4" />
-                        Admin Dashboard
-                      </Link>
+                      <>
+                        <div className="border-t border-gray-200 dark:border-dark-border my-1"></div>
+                        <p className="px-4 py-1 text-xs text-gray-400 uppercase">Admin Section</p>
+                        <Link
+                          to="/admin"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-border transition-colors"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <FiPackage className="w-4 h-4" />
+                          Admin Dashboard
+                        </Link>
+                      </>
                     )}
                     
                     <div className="border-t border-gray-200 dark:border-dark-border my-1"></div>
@@ -190,6 +215,17 @@ const Navbar = () => {
               </Link>
             ))}
             
+            {/* Cart in mobile menu - only for customers */}
+            {isAuthenticated && user?.role === 'customer' && (
+              <Link
+                to="/cart"
+                className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"
+                onClick={() => setIsOpen(false)}
+              >
+                Cart ({cartItemsCount})
+              </Link>
+            )}
+            
             {isAuthenticated && user && (
               <>
                 <div className="flex items-center gap-3 py-3 border-t border-gray-200 dark:border-dark-border mt-2">
@@ -197,6 +233,7 @@ const Navbar = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
+                    <p className="text-xs text-boutique-primary capitalize">{user.role}</p>
                   </div>
                 </div>
                 <Link
@@ -206,6 +243,16 @@ const Navbar = () => {
                 >
                   My Profile
                 </Link>
+                {/* Cart link for customers in mobile menu */}
+                {user.role === 'customer' && (
+                  <Link
+                    to="/cart"
+                    className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    My Cart ({cartItemsCount})
+                  </Link>
+                )}
                 <Link
                   to="/orders"
                   className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"
@@ -214,17 +261,21 @@ const Navbar = () => {
                   My Orders
                 </Link>
                 {user.role === 'admin' && (
-                  <Link
-                    to="/admin"
-                    className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Admin Dashboard
-                  </Link>
+                  <>
+                    <div className="border-t border-gray-200 dark:border-dark-border my-2"></div>
+                    <p className="px-2 py-1 text-xs text-gray-400">Admin Section</p>
+                    <Link
+                      to="/admin"
+                      className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Admin Dashboard
+                    </Link>
+                  </>
                 )}
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left py-2 text-red-600 hover:text-boutique-primary"
+                  className="block w-full text-left py-2 text-red-600 hover:text-boutique-primary mt-2 border-t border-gray-200 dark:border-dark-border pt-2"
                 >
                   Logout
                 </button>
@@ -232,13 +283,22 @@ const Navbar = () => {
             )}
             
             {!isAuthenticated && (
-              <Link
-                to="/login"
-                className="block py-2 text-boutique-primary font-semibold"
-                onClick={() => setIsOpen(false)}
-              >
-                Sign In
-              </Link>
+              <>
+                <Link
+                  to="/login"
+                  className="block py-2 text-boutique-primary font-semibold"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Register
+                </Link>
+              </>
             )}
           </div>
         )}

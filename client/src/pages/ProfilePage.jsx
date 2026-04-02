@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,18 +18,20 @@ import {
   FiEye,
   FiEyeOff,
   FiEdit2,
-  FiCheck
+  FiCheck,
+  FiArrowLeft,
+  FiShoppingBag
 } from 'react-icons/fi';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().optional(),
+  phone: z.string().min(10, 'Phone number is required for checkout').optional(),
   address: z.object({
-    street: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    zipCode: z.string().optional(),
-    country: z.string().optional()
+    street: z.string().min(1, 'Street address is required for checkout'),
+    city: z.string().min(1, 'City is required for checkout'),
+    state: z.string().min(1, 'State is required for checkout'),
+    zipCode: z.string().min(1, 'ZIP code is required for checkout'),
+    country: z.string().min(1, 'Country is required for checkout')
   }).optional()
 });
 
@@ -44,6 +46,7 @@ const passwordSchema = z.object({
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, updateUser, isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -54,7 +57,11 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profileImage, setProfileImage] = useState(user?.profileImage || null);
   
-  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
+  // Check if coming from checkout
+  const fromCheckout = location.state?.fromCheckout;
+  const missingFields = location.state?.missingFields || [];
+
+  const { register, handleSubmit, formState: { errors }, reset, watch, setError, clearErrors } = useForm({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user?.name || '',
@@ -84,7 +91,6 @@ const ProfilePage = () => {
     }
   }, [isAuthenticated, navigate]);
   
-  // Update form when user data changes
   useEffect(() => {
     if (user) {
       reset({
@@ -101,6 +107,33 @@ const ProfilePage = () => {
       setProfileImage(user.profileImage || null);
     }
   }, [user, reset]);
+
+  // Show validation errors for missing fields when coming from checkout
+  useEffect(() => {
+    if (fromCheckout && missingFields.length > 0) {
+      toast.error('Please complete all required fields to proceed with checkout');
+      
+      // Set errors for missing fields
+      missingFields.forEach(field => {
+        if (field === 'phone') {
+          setError('phone', { message: 'Phone number is required for checkout' });
+        } else if (field === 'street') {
+          setError('address.street', { message: 'Street address is required for checkout' });
+        } else if (field === 'city') {
+          setError('address.city', { message: 'City is required for checkout' });
+        } else if (field === 'state') {
+          setError('address.state', { message: 'State is required for checkout' });
+        } else if (field === 'zipCode') {
+          setError('address.zipCode', { message: 'ZIP code is required for checkout' });
+        } else if (field === 'country') {
+          setError('address.country', { message: 'Country is required for checkout' });
+        }
+      });
+      
+      // Auto-open edit mode
+      setIsEditing(true);
+    }
+  }, [fromCheckout, missingFields, setError]);
   
   const onProfileSubmit = async (data) => {
     setLoading(true);
@@ -110,6 +143,13 @@ const ProfilePage = () => {
         updateUser(result.user);
         toast.success('Profile updated successfully!');
         setIsEditing(false);
+        
+        // If coming from checkout, redirect to checkout after successful update
+        if (fromCheckout) {
+          setTimeout(() => {
+            navigate('/checkout');
+          }, 1500);
+        }
       } else {
         toast.error(result.message || 'Failed to update profile');
       }
@@ -141,42 +181,18 @@ const ProfilePage = () => {
     }
   };
   
- // Update the handleImageUpload function
-const handleImageUpload = async (image) => {
-  try {
-    console.log('📸 Image uploaded:', image);
-    
-    if (!image) {
-      // Image was removed
-      const result = await authService.updateProfile({ 
-        profileImage: { url: '', publicId: '' }
-      });
+  const handleImageUpload = async (image) => {
+    try {
+      const result = await authService.updateProfile({ profileImage: image });
       if (result.success) {
         updateUser(result.user);
-        setProfileImage(null);
-        toast.success('Profile image removed');
+        setProfileImage(image);
+        toast.success('Profile image updated!');
       }
-      return;
+    } catch (error) {
+      toast.error('Failed to update profile image');
     }
-    
-    // Update profile with new image
-    const result = await authService.updateProfile({ 
-      profileImage: image 
-    });
-    
-    if (result.success) {
-      console.log('✅ Profile updated with image:', result.user.profileImage);
-      updateUser(result.user);
-      setProfileImage(result.user.profileImage);
-      toast.success('Profile image updated!');
-    } else {
-      toast.error(result.message || 'Failed to update profile image');
-    }
-  } catch (error) {
-    console.error('Profile image update error:', error);
-    toast.error('Failed to update profile image');
-  }
-};
+  };
   
   if (!user) {
     return (
@@ -186,8 +202,31 @@ const handleImageUpload = async (image) => {
     );
   }
   
+  // Get watched values for validation
+  const watchedPhone = watch('phone');
+  const watchedStreet = watch('address.street');
+  const watchedCity = watch('address.city');
+  const watchedState = watch('address.state');
+  const watchedZipCode = watch('address.zipCode');
+  
+  const isPhoneValid = watchedPhone && watchedPhone.length >= 10;
+  const isAddressValid = watchedStreet && watchedCity && watchedState && watchedZipCode;
+  const isProfileComplete = isPhoneValid && isAddressValid;
+  
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      {fromCheckout && (
+        <div className="mb-6">
+          <button
+            onClick={() => navigate('/checkout')}
+            className="flex items-center gap-2 text-gray-600 hover:text-boutique-primary transition-colors"
+          >
+            <FiArrowLeft className="w-4 h-4" />
+            Back to Checkout
+          </button>
+        </div>
+      )}
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -195,13 +234,38 @@ const handleImageUpload = async (image) => {
       >
         {/* Header */}
         <div className="text-center mb-8">
+          {fromCheckout && (
+            <div className="inline-flex items-center gap-2 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 px-4 py-2 rounded-full text-sm mb-4">
+              <FiShoppingBag className="w-4 h-4" />
+              Complete Profile to Continue Checkout
+            </div>
+          )}
           <h1 className="text-3xl font-playfair font-bold text-gray-900 dark:text-white mb-2">
             My Profile
           </h1>
           <p className="text-gray-600 dark:text-dark-textMuted">
-            Manage your account information
+            {fromCheckout 
+              ? 'Please complete your profile information to proceed with checkout'
+              : 'Manage your account information'}
           </p>
         </div>
+        
+        {/* Profile Completion Status */}
+        {!fromCheckout && !isProfileComplete && (
+          <div className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <FiAlertCircle className="w-5 h-5 text-yellow-600" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
+                  Profile Incomplete
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-500">
+                  Please add your phone number and complete address to enable checkout
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Profile Image */}
         <div className="flex justify-center mb-8">
@@ -233,6 +297,7 @@ const handleImageUpload = async (image) => {
                 onClick={() => {
                   setIsEditing(false);
                   reset();
+                  clearErrors();
                 }}
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -263,8 +328,11 @@ const handleImageUpload = async (image) => {
                   <div>
                     <label className="block text-sm font-medium text-gray-500 dark:text-dark-textMuted mb-1">
                       Phone Number
+                      {!user?.phone && <span className="ml-1 text-red-500">*</span>}
                     </label>
-                    <p className="text-gray-900 dark:text-white">{user.phone || 'Not provided'}</p>
+                    <p className={`${!user?.phone ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}>
+                      {user?.phone || 'Not provided'}
+                    </p>
                   </div>
                   
                   <div>
@@ -281,15 +349,16 @@ const handleImageUpload = async (image) => {
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-500 dark:text-dark-textMuted mb-1">
                     Shipping Address
+                    {(!user?.address?.street || !user?.address?.city) && <span className="ml-1 text-red-500">*</span>}
                   </label>
-                  {user.address?.street ? (
+                  {user?.address?.street ? (
                     <p className="text-gray-900 dark:text-white">
                       {user.address.street}<br />
                       {user.address.city}, {user.address.state} {user.address.zipCode}<br />
                       {user.address.country}
                     </p>
                   ) : (
-                    <p className="text-gray-500 italic">No address added yet</p>
+                    <p className="text-red-500">Not provided</p>
                   )}
                 </div>
               </div>
@@ -299,7 +368,7 @@ const handleImageUpload = async (image) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
-                      Full Name *
+                      Full Name
                     </label>
                     <input
                       type="text"
@@ -326,29 +395,49 @@ const handleImageUpload = async (image) => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
-                      Phone Number
+                      Phone Number <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="tel"
-                      {...register('phone')}
-                      className="input-field"
-                      placeholder="+251 911 234 567"
-                    />
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiPhone className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <input
+                        type="tel"
+                        {...register('phone')}
+                        className="input-field pl-10"
+                        placeholder="+251 911 234 567"
+                      />
+                    </div>
+                    {errors.phone && (
+                      <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
+                    )}
+                    {!errors.phone && watchedPhone && watchedPhone.length >= 10 && (
+                      <p className="text-green-500 text-xs mt-1">✓ Phone number added</p>
+                    )}
                   </div>
                 </div>
                 
                 {/* Address Fields */}
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
-                    Address
+                    Shipping Address <span className="text-red-500">*</span>
                   </label>
                   <div className="space-y-3">
-                    <input
-                      type="text"
-                      {...register('address.street')}
-                      className="input-field"
-                      placeholder="Street Address"
-                    />
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiMapPin className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        {...register('address.street')}
+                        className="input-field pl-10"
+                        placeholder="Street Address"
+                      />
+                    </div>
+                    {errors.address?.street && (
+                      <p className="text-red-500 text-sm mt-1">{errors.address.street.message}</p>
+                    )}
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <input
                         type="text"
@@ -356,13 +445,21 @@ const handleImageUpload = async (image) => {
                         className="input-field"
                         placeholder="City"
                       />
+                      {errors.address?.city && (
+                        <p className="text-red-500 text-sm mt-1">{errors.address.city.message}</p>
+                      )}
+                      
                       <input
                         type="text"
                         {...register('address.state')}
                         className="input-field"
                         placeholder="State/Province"
                       />
+                      {errors.address?.state && (
+                        <p className="text-red-500 text-sm mt-1">{errors.address.state.message}</p>
+                      )}
                     </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <input
                         type="text"
@@ -370,12 +467,19 @@ const handleImageUpload = async (image) => {
                         className="input-field"
                         placeholder="ZIP / Postal Code"
                       />
+                      {errors.address?.zipCode && (
+                        <p className="text-red-500 text-sm mt-1">{errors.address.zipCode.message}</p>
+                      )}
+                      
                       <input
                         type="text"
                         {...register('address.country')}
                         className="input-field"
                         placeholder="Country"
                       />
+                      {errors.address?.country && (
+                        <p className="text-red-500 text-sm mt-1">{errors.address.country.message}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -391,7 +495,7 @@ const handleImageUpload = async (image) => {
                     ) : (
                       <FiSave className="w-4 h-4" />
                     )}
-                    Save Changes
+                    {fromCheckout ? 'Save & Continue to Checkout' : 'Save Changes'}
                   </button>
                 </div>
               </form>

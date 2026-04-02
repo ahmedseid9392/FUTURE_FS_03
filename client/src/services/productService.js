@@ -92,17 +92,38 @@ export const productService = {
   },
   
   getById: async (id) => {
-    try {
-      const response = await api.get(`/products/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('Get product error:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Product not found' 
+  try {
+    const response = await api.get(`/products/${id}`);
+    console.log('Product API Response:', response.data);
+    
+    // Handle different response structures
+    if (response.data.success) {
+      return {
+        success: true,
+        data: response.data
       };
     }
-  },
+    
+    // If response already has the product directly
+    if (response.data.product) {
+      return {
+        success: true,
+        data: { product: response.data.product }
+      };
+    }
+    
+    return { 
+      success: false, 
+      message: response.data?.message || 'Product not found' 
+    };
+  } catch (error) {
+    console.error('Get product error:', error);
+    return { 
+      success: false, 
+      message: error.response?.data?.message || 'Product not found' 
+    };
+  }
+},
   
   getFeatured: async (limit = 8) => {
     try {
