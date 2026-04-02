@@ -20,8 +20,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 // import OrdersPage from './pages/OrdersPage';
-// import AboutPage from './pages/AboutPage';
-// import ContactPage from './pages/ContactPage';
+ import AboutPage from './pages/AboutPage';
+ import ContactPage from './pages/ContactPage';
+ import PaymentStatusPage from './pages/PaymentStatusPage';
 
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -56,6 +57,7 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/payment-status" element={<PaymentStatusPage />} />
 
         <Route path="/admin" element={
   <ProtectedRoute requireAuth={true}>
@@ -105,8 +107,8 @@ function App() {
                     <OrdersPage />
                   </ProtectedRoute>
                 } />  */}
-              {/* <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />  */}
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} /> 
             </Routes>
           </Layout>
           <Toaster

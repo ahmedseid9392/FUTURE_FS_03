@@ -13,6 +13,8 @@ import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import './config/passport.js'; // Import passport config
 
+import paymentRoutes from './routes/paymentRoutes.js';
+
 // Load environment variables
 dotenv.config();
 
@@ -64,6 +66,8 @@ console.log('✅ Order routes registered at /api/orders');
 app.use('/api/upload', uploadRoutes);
 console.log('✅ Upload routes registered at /api/upload');
 
+app.use('/api/payments', paymentRoutes);
+console.log('✅ Payment routes registered at /api/payments');
 // Basic test route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 

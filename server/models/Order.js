@@ -175,23 +175,15 @@ const orderSchema = new mongoose.Schema({
   cancellationReason: {
     type: String,
     trim: true
+  },
+  paymentReference: {
+    type: String,
+    sparse: true
   }
 }, {
   timestamps: true
 });
 
-// Pre-save middleware to generate order number
-orderSchema.pre('save', async function(next) {
-  if (!this.orderNumber) {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    this.orderNumber = `JAMS-${year}${month}${day}-${random}`;
-  }
-  next();
-});
 
 // Virtual: Check if order is deliverable
 orderSchema.virtual('isDeliverable').get(function() {

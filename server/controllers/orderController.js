@@ -9,6 +9,7 @@ import { validationResult } from 'express-validator';
  */
 export const createOrder = async (req, res) => {
   try {
+    // Check validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -23,6 +24,9 @@ export const createOrder = async (req, res) => {
       paymentMethod,
       notes
     } = req.body;
+
+    console.log('Creating order with items:', items.length);
+    console.log('Payment method:', paymentMethod);
 
     // Verify all products exist and have sufficient stock
     for (const item of items) {
@@ -57,7 +61,7 @@ export const createOrder = async (req, res) => {
         quantity: item.quantity,
         size: item.size || '',
         color: item.color || '',
-        image: product.mainImage?.url || product.images[0]?.url || ''
+        image: product.mainImage?.url || product.images?.[0]?.url || ''
       });
       
       // Update product stock
@@ -78,20 +82,11 @@ export const createOrder = async (req, res) => {
       shippingCost,
       tax,
       totalAmount,
-      shippingAddress: {
-        fullName: shippingAddress.fullName,
-        street: shippingAddress.street,
-        city: shippingAddress.city,
-        state: shippingAddress.state,
-        zipCode: shippingAddress.zipCode,
-        country: shippingAddress.country,
-        phone: shippingAddress.phone,
-        email: shippingAddress.email
-      },
+      shippingAddress,
       paymentMethod,
       notes,
       orderStatus: 'pending',
-      paymentStatus: 'pending'
+      paymentStatus: paymentMethod === 'chapa' ? 'pending' : 'pending'
     });
 
     // Add initial status history

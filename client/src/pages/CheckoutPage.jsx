@@ -16,12 +16,14 @@ import {
   FiUser,
   FiMail,
   FiPhone,
-  FiMapPin
+  FiMapPin,
+  FiLoader
 } from 'react-icons/fi';
 import { useCartStore } from '../store/cartStore';
 import { useCurrencyContext } from '../context/CurrencyContext';
 import { useAuthStore } from '../store/authStore';
-import { orderService } from '../services/orderService';
+import orderService from '../services/orderService'; // Default import
+import { paymentService } from '../services/paymentService';
 import toast from 'react-hot-toast';
 import CheckoutGuard from '../components/checkout/CheckoutGuard';
 
@@ -34,7 +36,7 @@ const checkoutSchema = z.object({
   state: z.string().min(2, 'State is required'),
   zipCode: z.string().min(3, 'ZIP code is required'),
   country: z.string().min(2, 'Country is required'),
-  paymentMethod: z.enum(['card', 'cash', 'bank_transfer'], {
+  paymentMethod: z.enum(['card', 'cash', 'bank_transfer', 'chapa'], {
     required_error: 'Please select a payment method'
   }),
   notes: z.string().optional()
@@ -48,8 +50,9 @@ const CheckoutPage = () => {
   const [loading, setLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [processingPayment, setProcessingPayment] = useState(false);
   
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm({
+  const { register, handleSubmit, formState: { errors }, watch } = useForm({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
       fullName: user?.name || '',
@@ -80,62 +83,48 @@ const CheckoutPage = () => {
   }, [items.length, navigate, orderPlaced]);
   
   const onSubmit = async (data) => {
-    if (items.length === 0) {
-      toast.error('Your cart is empty');
-      return;
-    }
-    
-    // Validate stock availability for all items
-  for (const item of items) {
-    if (item.quantity > item.stock) {
-      toast.error(`${item.name} only has ${item.stock} items available. Please update your cart.`);
-      navigate('/cart');
-      return;
-    }
+  if (items.length === 0) {
+    toast.error('Your cart is empty');
+    return;
   }
   
   setLoading(true);
-
-    
-    const orderData = {
-      items: items.map(item => ({
-        product: item._id,
-        quantity: item.quantity,
-        size: item.selectedSize,
-        color: item.selectedColor
-      })),
-      shippingAddress: {
-        fullName: data.fullName,
-        street: data.street,
-        city: data.city,
-        state: data.state,
-        zipCode: data.zipCode,
-        country: data.country,
-        phone: data.phone,
-        email: data.email
-      },
-      paymentMethod: data.paymentMethod,
-      notes: data.notes
-    };
-    
-    try {
-      const result = await orderService.create(orderData);
-      
-      if (result.success) {
-        setOrderNumber(result.data.order.orderNumber);
-        setOrderPlaced(true);
-        clearCart();
-        toast.success('Order placed successfully!');
-      } else {
-        toast.error(result.message || 'Failed to place order');
-      }
-    } catch (error) {
-      console.error('Checkout error:', error);
-      toast.error('Failed to place order. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  
+  // Ensure all required fields are present
+  const orderData = {
+    items: items.map(item => ({
+      product: item._id,
+      quantity: Number(item.quantity),
+      size: item.selectedSize || '',
+      color: item.selectedColor || ''
+    })),
+    shippingAddress: {
+      fullName: data.fullName.trim(),
+      street: data.street.trim(),
+      city: data.city.trim(),
+      state: data.state.trim(),
+      zipCode: data.zipCode.trim(),
+      country: data.country.trim(),
+      phone: data.phone.trim(),
+      email: data.email.trim()
+    },
+    paymentMethod: data.paymentMethod,
+    notes: data.notes || ''
   };
+  
+  console.log('Sending order data:', JSON.stringify(orderData, null, 2));
+  
+  try {
+    const result = await orderService.create(orderData);
+    console.log('Order result:', result);
+    
+    // ... rest of the code
+  } catch (error) {
+    console.error('Checkout error:', error);
+    toast.error('Failed to place order. Please try again.');
+    setLoading(false);
+  }
+};
   
   if (orderPlaced) {
     return (
@@ -386,35 +375,17 @@ const CheckoutPage = () => {
                 <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors">
                   <input
                     type="radio"
-                    value="card"
+                    value="chapa"
                     {...register('paymentMethod')}
                     className="w-4 h-4 text-boutique-primary"
                   />
                   <div className="ml-3 flex-1">
                     <div className="flex items-center gap-2">
-                      <FiCreditCard className="w-5 h-5 text-blue-600" />
-                      <span className="font-medium">Credit / Debit Card</span>
+                      <FiCreditCard className="w-5 h-5 text-purple-600" />
+                      <span className="font-medium">Chapa Payment</span>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-dark-textMuted">
-                      Secure payment via card
-                    </p>
-                  </div>
-                </label>
-                
-                <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors">
-                  <input
-                    type="radio"
-                    value="bank_transfer"
-                    {...register('paymentMethod')}
-                    className="w-4 h-4 text-boutique-primary"
-                  />
-                  <div className="ml-3 flex-1">
-                    <div className="flex items-center gap-2">
-                      <FiHome className="w-5 h-5 text-purple-600" />
-                      <span className="font-medium">Bank Transfer</span>
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-dark-textMuted">
-                      Transfer directly to our bank account
+                      Pay with CBE Birr, Tele Birr, Amole, Credit Card & more
                     </p>
                   </div>
                 </label>
@@ -440,15 +411,27 @@ const CheckoutPage = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || processingPayment}
               className="btn-primary w-full py-3 text-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? (
+              {processingPayment ? (
+                <>
+                  <FiLoader className="w-5 h-5 animate-spin" />
+                  Redirecting to Payment...
+                </>
+              ) : loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : selectedPaymentMethod === 'chapa' ? (
+                <>
+                  <FiCreditCard className="w-5 h-5" />
+                  Pay with Chapa - {formatPrice(total)}
+                </>
               ) : (
-                <FiLock className="w-5 h-5" />
+                <>
+                  <FiDollarSign className="w-5 h-5" />
+                  Place Order - {formatPrice(total)}
+                </>
               )}
-              {loading ? 'Placing Order...' : `Place Order - ${formatPrice(total)}`}
             </button>
           </form>
         </div>
