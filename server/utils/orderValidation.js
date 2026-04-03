@@ -60,3 +60,27 @@ export const validateOrder = [
     .optional()
     .isLength({ max: 500 }).withMessage('Notes cannot exceed 500 characters')
 ];
+
+// Add this export - Validation for order status update
+export const validateOrderStatus = [
+  body('status')
+    .notEmpty().withMessage('Status is required')
+    .isIn(['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'cancelled', 'returned'])
+    .withMessage('Invalid order status'),
+  
+  body('note')
+    .optional()
+    .isLength({ max: 500 }).withMessage('Note cannot exceed 500 characters')
+];
+
+// Add this export - Validation for payment status update
+export const validatePaymentStatus = [
+  body('paymentStatus')
+    .notEmpty().withMessage('Payment status is required')
+    .isIn(['pending', 'processing', 'completed', 'failed', 'refunded'])
+    .withMessage('Invalid payment status'),
+  
+  body('transactionId')
+    .optional()
+    .isString().withMessage('Transaction ID must be a string')
+];

@@ -9,7 +9,6 @@ import { validationResult } from 'express-validator';
  */
 export const createOrder = async (req, res) => {
   try {
-    // Check validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -24,9 +23,6 @@ export const createOrder = async (req, res) => {
       paymentMethod,
       notes
     } = req.body;
-
-    console.log('Creating order with items:', items.length);
-    console.log('Payment method:', paymentMethod);
 
     // Verify all products exist and have sufficient stock
     for (const item of items) {
@@ -69,13 +65,13 @@ export const createOrder = async (req, res) => {
       await product.save();
     }
 
-    // Calculate shipping cost (free shipping over $50 or flat rate)
+    // Calculate shipping cost
     const shippingCost = subtotal > 50 ? 0 : 5;
-    const tax = subtotal * 0.02; // 2% tax
+    const tax = subtotal * 0.02;
     const totalAmount = subtotal + shippingCost + tax;
 
     // Create order
-    const order = await Order.create({
+    const order = new Order({
       user: req.user.id,
       items: orderItems,
       subtotal,
@@ -86,27 +82,29 @@ export const createOrder = async (req, res) => {
       paymentMethod,
       notes,
       orderStatus: 'pending',
-      paymentStatus: paymentMethod === 'chapa' ? 'pending' : 'pending'
+      paymentStatus: 'pending'
     });
 
-    // Add initial status history
+    await order.save();
     await order.addStatusHistory('pending', 'Order placed', req.user.id);
 
+    // Return the order with all fields
+    const populatedOrder = await Order.findById(order._id).populate('user', 'name email');
+    
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
-      order
+      order: populatedOrder
     });
   } catch (error) {
     console.error('Create order error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
+      error: error.message
     });
   }
 };
-
 /**
  * @desc    Get user's orders
  * @route   GET /api/orders/my-orders
@@ -116,17 +114,26 @@ export const getMyOrders = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     
-    const orders = await Order.getUserOrders(req.user.id, page, limit);
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    const orders = await Order.find({ user: req.user.id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .populate('items.product', 'name images');
+    
     const total = await Order.countDocuments({ user: req.user.id });
-
+    
     res.status(200).json({
       success: true,
-      orders,
+      orders: orders,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -134,7 +141,7 @@ export const getMyOrders = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
+      error: error.message
     });
   }
 };

@@ -6,6 +6,10 @@ class ChapaService {
     this.secretKey = process.env.CHAPA_SECRET_KEY;
     this.apiUrl = process.env.CHAPA_API_URL;
     this.encryptionKey = process.env.CHAPA_ENCRYPTION_KEY;
+    
+    console.log('Chapa Service Initialized');
+    console.log('API URL:', this.apiUrl);
+    console.log('Secret Key exists:', !!this.secretKey);
   }
 
   /**
@@ -25,6 +29,14 @@ class ChapaService {
         return_url
       } = paymentData;
 
+      // Validate required fields
+      if (!amount || !email || !tx_ref || !callback_url || !return_url) {
+        return {
+          success: false,
+          message: 'Missing required payment fields'
+        };
+      }
+
       const payload = {
         amount: Math.round(amount),
         currency: 'ETB',
@@ -41,6 +53,12 @@ class ChapaService {
         }
       };
 
+      console.log('Sending payment request to Chapa:', {
+        amount: payload.amount,
+        email: payload.email,
+        tx_ref: payload.tx_ref
+      });
+
       const response = await axios.post(
         `${this.apiUrl}/transaction/initialize`,
         payload,
@@ -51,6 +69,8 @@ class ChapaService {
           }
         }
       );
+
+      console.log('Chapa response:', response.data);
 
       return {
         success: true,

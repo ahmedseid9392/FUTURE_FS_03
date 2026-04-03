@@ -10,6 +10,15 @@ export const initiatePayment = async (req, res) => {
   try {
     const { orderId } = req.body;
     
+    console.log('📦 Initiating payment for order:', orderId);
+    
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order ID is required'
+      });
+    }
+    
     // Find the order
     const order = await Order.findById(orderId);
     if (!order) {
@@ -31,8 +40,19 @@ export const initiatePayment = async (req, res) => {
     const tx_ref = ChapaService.generateTransactionReference();
     
     // Prepare callback URLs
-    const callback_url = `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/verify?tx_ref=${tx_ref}&order_id=${orderId}`;
-    const return_url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status`;
+    const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    
+    const callback_url = `${baseUrl}/api/payments/verify?tx_ref=${tx_ref}&order_id=${orderId}`;
+    const return_url = `${frontendUrl}/payment-status`;
+
+    console.log('💰 Payment details:', {
+      amount: order.totalAmount,
+      email: order.shippingAddress.email,
+      tx_ref,
+      callback_url,
+      return_url
+    });
 
     // Initialize payment
     const payment = await ChapaService.initializePayment({
@@ -46,6 +66,7 @@ export const initiatePayment = async (req, res) => {
     });
 
     if (!payment.success) {
+      console.error('Payment initialization failed:', payment.message);
       return res.status(400).json({
         success: false,
         message: payment.message
@@ -56,6 +77,8 @@ export const initiatePayment = async (req, res) => {
     order.paymentReference = tx_ref;
     order.paymentStatus = 'processing';
     await order.save();
+
+    console.log('✅ Payment initiated successfully');
 
     res.status(200).json({
       success: true,
@@ -82,6 +105,8 @@ export const initiatePayment = async (req, res) => {
 export const verifyPayment = async (req, res) => {
   try {
     const { tx_ref, order_id } = req.query;
+    
+    console.log('🔍 Verifying payment:', { tx_ref, order_id });
     
     if (!tx_ref || !order_id) {
       return res.redirect(`${process.env.FRONTEND_URL}/payment-status?status=failed&message=Invalid payment reference`);
@@ -113,12 +138,15 @@ export const verifyPayment = async (req, res) => {
       // Add status history
       await order.addStatusHistory('confirmed', 'Payment confirmed via Chapa', order.user);
       
+      console.log('✅ Payment verified successfully for order:', order_id);
+      
       return res.redirect(`${process.env.FRONTEND_URL}/payment-status?status=success&order_id=${order_id}`);
     } else {
       // Payment failed
       order.paymentStatus = 'failed';
-      order.orderStatus = 'pending';
       await order.save();
+      
+      console.log('❌ Payment verification failed:', verification);
       
       return res.redirect(`${process.env.FRONTEND_URL}/payment-status?status=failed&message=Payment verification failed`);
     }
@@ -131,22 +159,34 @@ export const verifyPayment = async (req, res) => {
 /**
  * Chapa Webhook
  * @route POST /api/payments/chapa-webhook
- * @access Public (Verified by signature)
+ * @access Public
  */
 export const chapaWebhook = async (req, res) => {
   try {
+    console.log('📨 Webhook received:', JSON.stringify(req.body, null, 2));
+    
+    // Check if body exists
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log('Empty webhook body');
+      return res.status(400).json({ status: 'error', message: 'Empty webhook body' });
+    }
+    
     const { data } = req.body;
     
-    // Verify webhook signature (optional but recommended)
-    const signature = req.headers['x-chapa-signature'];
+    if (!data) {
+      console.log('No data in webhook');
+      return res.status(400).json({ status: 'error', message: 'No data in webhook' });
+    }
     
-    if (!data || !data.tx_ref) {
-      return res.status(400).json({ status: 'error', message: 'Invalid webhook data' });
+    if (!data.tx_ref) {
+      console.log('No transaction reference in webhook');
+      return res.status(400).json({ status: 'error', message: 'No transaction reference' });
     }
 
     // Find order by payment reference
     const order = await Order.findOne({ paymentReference: data.tx_ref });
     if (!order) {
+      console.log('Order not found for tx_ref:', data.tx_ref);
       return res.status(404).json({ status: 'error', message: 'Order not found' });
     }
 
@@ -155,18 +195,20 @@ export const chapaWebhook = async (req, res) => {
       order.paymentStatus = 'completed';
       order.orderStatus = 'confirmed';
       order.paymentDetails = {
-        transactionId: data.reference,
-        paymentMethod: data.payment_method,
+        transactionId: data.reference || data.transaction_id,
+        paymentMethod: data.payment_method || 'chapa',
         amount: data.amount,
-        currency: data.currency,
+        currency: data.currency || 'ETB',
         paymentDate: new Date(),
         reference: data.tx_ref
       };
       await order.save();
       await order.addStatusHistory('confirmed', 'Payment confirmed via Chapa webhook', order.user);
+      console.log('✅ Order updated via webhook:', order._id);
     } else if (data.status === 'failed') {
       order.paymentStatus = 'failed';
       await order.save();
+      console.log('❌ Payment failed via webhook:', order._id);
     }
 
     res.status(200).json({ status: 'success', message: 'Webhook processed' });

@@ -82,7 +82,7 @@ const CheckoutPage = () => {
     }
   }, [items.length, navigate, orderPlaced]);
   
-  const onSubmit = async (data) => {
+const onSubmit = async (data) => {
   if (items.length === 0) {
     toast.error('Your cart is empty');
     return;
@@ -90,42 +90,81 @@ const CheckoutPage = () => {
   
   setLoading(true);
   
-  // Ensure all required fields are present
   const orderData = {
     items: items.map(item => ({
       product: item._id,
-      quantity: Number(item.quantity),
-      size: item.selectedSize || '',
-      color: item.selectedColor || ''
+      quantity: item.quantity,
+      size: item.selectedSize,
+      color: item.selectedColor
     })),
     shippingAddress: {
-      fullName: data.fullName.trim(),
-      street: data.street.trim(),
-      city: data.city.trim(),
-      state: data.state.trim(),
-      zipCode: data.zipCode.trim(),
-      country: data.country.trim(),
-      phone: data.phone.trim(),
-      email: data.email.trim()
+      fullName: data.fullName,
+      street: data.street,
+      city: data.city,
+      state: data.state,
+      zipCode: data.zipCode,
+      country: data.country,
+      phone: data.phone,
+      email: data.email
     },
     paymentMethod: data.paymentMethod,
-    notes: data.notes || ''
+    notes: data.notes
   };
   
-  console.log('Sending order data:', JSON.stringify(orderData, null, 2));
-  
   try {
-    const result = await orderService.create(orderData);
-    console.log('Order result:', result);
+    console.log('Creating order with data:', orderData);
     
-    // ... rest of the code
+    const result = await orderService.create(orderData);
+    
+    console.log('Full API response:', result);
+    
+    if (result.success) {
+      // Safely get order ID from response
+      const orderId = result.data?.order?._id || result.order?._id || result.data?._id;
+      const orderNumber = result.data?.order?.orderNumber || result.order?.orderNumber || result.data?.orderNumber;
+      
+      console.log('Order ID:', orderId);
+      console.log('Order Number:', orderNumber);
+      
+      if (data.paymentMethod === 'chapa') {
+        if (!orderId) {
+          console.error('No order ID found in response:', result);
+          toast.error('Failed to get order ID');
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Initiating Chapa payment for order:', orderId);
+        setProcessingPayment(true);
+        
+        const paymentResult = await paymentService.initiatePayment(orderId);
+        console.log('Payment result:', paymentResult);
+        
+        if (paymentResult.success && paymentResult.data?.checkout_url) {
+          console.log('Redirecting to Chapa:', paymentResult.data.checkout_url);
+          window.location.href = paymentResult.data.checkout_url;
+        } else {
+          toast.error(paymentResult.message || 'Failed to initiate payment');
+          setProcessingPayment(false);
+          setLoading(false);
+        }
+      } else {
+        // Cash on delivery
+        setOrderNumber(orderNumber || 'N/A');
+        setOrderPlaced(true);
+        clearCart();
+        toast.success('Order placed successfully!');
+      }
+    } else {
+      toast.error(result.message || 'Failed to place order');
+      setLoading(false);
+    }
   } catch (error) {
     console.error('Checkout error:', error);
     toast.error('Failed to place order. Please try again.');
     setLoading(false);
   }
 };
-  
   if (orderPlaced) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">

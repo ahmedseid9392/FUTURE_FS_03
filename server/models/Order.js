@@ -44,7 +44,8 @@ const orderSchema = new mongoose.Schema({
   orderNumber: {
     type: String,
     unique: true,
-    required: true
+    sparse: true,  // This allows multiple null values
+    index: { unique: true, sparse: true }
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -116,13 +117,17 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['card', 'cash', 'bank_transfer'],
+    enum: ['card', 'cash', 'bank_transfer', 'chapa'],
     required: true
   },
   paymentStatus: {
     type: String,
     enum: ['pending', 'processing', 'completed', 'failed', 'refunded'],
     default: 'pending'
+  },
+  paymentReference: {
+    type: String,
+    sparse: true
   },
   paymentDetails: {
     transactionId: String,
@@ -175,14 +180,11 @@ const orderSchema = new mongoose.Schema({
   cancellationReason: {
     type: String,
     trim: true
-  },
-  paymentReference: {
-    type: String,
-    sparse: true
   }
 }, {
   timestamps: true
 });
+
 
 
 // Virtual: Check if order is deliverable
@@ -279,13 +281,8 @@ orderSchema.statics.getStatistics = async function() {
   };
 };
 
-// Indexes
-orderSchema.index({ orderNumber: 1 }, { unique: true });
-orderSchema.index({ user: 1 });
-orderSchema.index({ orderStatus: 1 });
-orderSchema.index({ createdAt: -1 });
-orderSchema.index({ user: 1, orderStatus: 1 });
-orderSchema.index({ createdAt: -1, orderStatus: 1 });
+// Remove automatic index creation - we'll handle it manually
+// The index will be created by MongoDB when the field is defined with sparse: true
 
 const Order = mongoose.model('Order', orderSchema);
 
