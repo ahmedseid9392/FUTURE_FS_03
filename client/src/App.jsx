@@ -18,10 +18,12 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import OrdersPage from './pages/OrdersPage';
+import OrderDetailsPage from './pages/OrderDetailsPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import PaymentStatusPage from './pages/PaymentStatusPage';
-import OrderDetailsPage from './pages/OrderDetailsPage';
+import AuthCallback from './pages/AuthCallback'; 
+import SearchPage from './pages/SearchPage';
 
 // Admin Pages
 import AdminLayout from './components/admin/AdminLayout';
@@ -43,11 +45,11 @@ const queryClient = new QueryClient({
 
 function App() {
   const { checkAuth } = useAuthStore();
-
+  
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-
+  
   return (
     <ThemeProvider>
       <CurrencyProvider>
@@ -62,7 +64,11 @@ function App() {
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/payment-status" element={<PaymentStatusPage />} />
-
+                
+                {/* Google OAuth Callback - MUST be before protected routes */}
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/search" element={<SearchPage />} />
+                
                 {/* Auth Routes */}
                 <Route path="/login" element={
                   <ProtectedRoute requireAuth={false}>
@@ -74,7 +80,7 @@ function App() {
                     <RegisterPage />
                   </ProtectedRoute>
                 } />
-
+                
                 {/* Protected Routes - Require Login */}
                 <Route path="/cart" element={
                   <ProtectedRoute requireAuth={true}>
@@ -101,7 +107,8 @@ function App() {
                     <OrderDetailsPage />
                   </ProtectedRoute>
                 } />
-
+                
+                
                 {/* Admin Routes */}
                 <Route path="/admin" element={
                   <ProtectedRoute requireAuth={true}>

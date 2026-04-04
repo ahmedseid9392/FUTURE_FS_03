@@ -8,7 +8,9 @@ import {
   getFeaturedProducts,
   getProductsByCategory,
   addReview,
-  getCategories
+  getCategories,
+  getSearchSuggestions,
+  getPopularProducts
 } from '../controllers/productController.js';
 import {
   validateProduct,
@@ -18,11 +20,19 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Public routes
-router.get('/', getAllProducts);
+// ============ IMPORTANT: Specific routes MUST come before parameterized routes ============
+
+// Public routes (specific paths first)
+router.get('/search/suggestions', getSearchSuggestions);
 router.get('/featured', getFeaturedProducts);
 router.get('/categories/all', getCategories);
+router.get('/popular', getPopularProducts);  // Add this route BEFORE /:id
 router.get('/category/:category', getProductsByCategory);
+
+// Main products route
+router.get('/', getAllProducts);
+
+// Product by ID route (MUST be LAST - catches any /:id parameter)
 router.get('/:id', getProductById);
 
 // Protected routes (reviews)

@@ -34,12 +34,14 @@ export const getAllProducts = async (req, res) => {
     if (size) filter.sizes = size;
     if (color) filter.colors = color;
     
-    // FIXED: Search functionality with text index
+    // FIXED: Search functionality with case-insensitive regex
     if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i'); // 'i' for case-insensitive
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { tags: { $regex: search, $options: 'i' } }
+        { name: { $regex: searchRegex } },
+        { description: { $regex: searchRegex } },
+        { category: { $regex: searchRegex } },
+        { tags: { $regex: searchRegex } }
       ];
     }
 
@@ -64,6 +66,8 @@ export const getAllProducts = async (req, res) => {
 
     // Get total count
     const total = await Product.countDocuments(filter);
+
+    console.log(`Search query: "${search}", Found: ${products.length} products`);
 
     res.status(200).json({
       success: true,
@@ -92,7 +96,8 @@ export const getAllProducts = async (req, res) => {
  */
 export const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate('ratings.user', 'name email');
     
     if (!product) {
       return res.status(404).json({
@@ -279,7 +284,6 @@ export const addReview = async (req, res) => {
     const { rating, review } = req.body;
     const productId = req.params.id;
     const userId = req.user.id;
-    const userName = req.user.name;
 
     const product = await Product.findById(productId);
     
@@ -311,13 +315,21 @@ export const addReview = async (req, res) => {
     });
 
     // Update average rating
-    await product.updateRating();
+    const totalRatings = product.ratings.length;
+    const sumRatings = product.ratings.reduce((sum, r) => sum + r.rating, 0);
+    product.averageRating = sumRatings / totalRatings;
+    product.totalReviews = totalRatings;
+    
+    await product.save();
+
+    // Return the updated product with populated user
+    const updatedProduct = await Product.findById(productId)
+      .populate('ratings.user', 'name email');
 
     res.status(200).json({
       success: true,
       message: 'Review added successfully',
-      averageRating: product.averageRating,
-      totalReviews: product.totalReviews
+      product: updatedProduct
     });
   } catch (error) {
     console.error('Add review error:', error);
@@ -353,6 +365,94 @@ export const getCategories = async (req, res) => {
     });
   } catch (error) {
     console.error('Get categories error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+/**
+ * Get search suggestions (autocomplete)
+ * @route GET /api/products/search/suggestions
+ * @access Public
+ */
+export const getSearchSuggestions = async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.status(200).json({
+        success: true,
+        data: { suggestions: [] }
+      });
+    }
+    
+    // Get product name suggestions
+    const nameSuggestions = await Product.find({
+      name: { $regex: q, $options: 'i' },
+      isActive: true
+    })
+      .select('name')
+      .limit(5);
+    
+    // Get category suggestions
+    const categories = await Product.distinct('category', {
+      category: { $regex: q, $options: 'i' },
+      isActive: true
+    });
+    
+    // Get tag suggestions
+    const tagSuggestions = await Product.aggregate([
+      { $match: { isActive: true } },
+      { $unwind: '$tags' },
+      { $match: { tags: { $regex: q, $options: 'i' } } },
+      { $group: { _id: '$tags', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+    
+    const suggestions = [
+      ...nameSuggestions.map(p => ({ name: p.name, type: 'product' })),
+      ...categories.map(c => ({ name: c, type: 'category' })),
+      ...tagSuggestions.map(t => ({ name: t._id, type: 'tag', count: t.count }))
+    ];
+    
+    res.status(200).json({
+      success: true,
+      data: { suggestions }
+    });
+  } catch (error) {
+    console.error('Get suggestions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+/**
+ * @desc    Get popular products (based on order count or rating)
+ * @route   GET /api/products/popular
+ * @access  Public
+ */
+export const getPopularProducts = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    
+    // Get products with highest average rating or most reviews
+    const products = await Product.find({ isActive: true })
+      .sort({ averageRating: -1, totalReviews: -1, createdAt: -1 })
+      .limit(parseInt(limit));
+    
+    // Extract just the names for popular searches
+    const popularSearches = products.map(p => p.name);
+    
+    res.status(200).json({
+      success: true,
+      data: { searches: popularSearches.slice(0, 10) }
+    });
+  } catch (error) {
+    console.error('Get popular products error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

@@ -22,7 +22,7 @@ import {
 import { useCartStore } from '../store/cartStore';
 import { useCurrencyContext } from '../context/CurrencyContext';
 import { useAuthStore } from '../store/authStore';
-import orderService from '../services/orderService'; // Default import
+import orderService from '../services/orderService';
 import { paymentService } from '../services/paymentService';
 import toast from 'react-hot-toast';
 import CheckoutGuard from '../components/checkout/CheckoutGuard';
@@ -36,7 +36,7 @@ const checkoutSchema = z.object({
   state: z.string().min(2, 'State is required'),
   zipCode: z.string().min(3, 'ZIP code is required'),
   country: z.string().min(2, 'Country is required'),
-  paymentMethod: z.enum(['card', 'cash', 'bank_transfer', 'chapa'], {
+  paymentMethod: z.enum(['cash', 'chapa'], {
     required_error: 'Please select a payment method'
   }),
   notes: z.string().optional()
@@ -82,89 +82,89 @@ const CheckoutPage = () => {
     }
   }, [items.length, navigate, orderPlaced]);
   
-const onSubmit = async (data) => {
-  if (items.length === 0) {
-    toast.error('Your cart is empty');
-    return;
-  }
-  
-  setLoading(true);
-  
-  const orderData = {
-    items: items.map(item => ({
-      product: item._id,
-      quantity: item.quantity,
-      size: item.selectedSize,
-      color: item.selectedColor
-    })),
-    shippingAddress: {
-      fullName: data.fullName,
-      street: data.street,
-      city: data.city,
-      state: data.state,
-      zipCode: data.zipCode,
-      country: data.country,
-      phone: data.phone,
-      email: data.email
-    },
-    paymentMethod: data.paymentMethod,
-    notes: data.notes
-  };
-  
-  try {
-    console.log('Creating order with data:', orderData);
+  const onSubmit = async (data) => {
+    if (items.length === 0) {
+      toast.error('Your cart is empty');
+      return;
+    }
     
-    const result = await orderService.create(orderData);
+    setLoading(true);
     
-    console.log('Full API response:', result);
+    const orderData = {
+      items: items.map(item => ({
+        product: item._id,
+        quantity: item.quantity,
+        size: item.selectedSize,
+        color: item.selectedColor
+      })),
+      shippingAddress: {
+        fullName: data.fullName,
+        street: data.street,
+        city: data.city,
+        state: data.state,
+        zipCode: data.zipCode,
+        country: data.country,
+        phone: data.phone,
+        email: data.email
+      },
+      paymentMethod: data.paymentMethod,
+      notes: data.notes
+    };
     
-    if (result.success) {
-      // Safely get order ID from response
-      const orderId = result.data?.order?._id || result.order?._id || result.data?._id;
-      const orderNumber = result.data?.order?.orderNumber || result.order?.orderNumber || result.data?.orderNumber;
+    try {
+      console.log('Creating order with data:', orderData);
       
-      console.log('Order ID:', orderId);
-      console.log('Order Number:', orderNumber);
+      const result = await orderService.create(orderData);
       
-      if (data.paymentMethod === 'chapa') {
-        if (!orderId) {
-          console.error('No order ID found in response:', result);
-          toast.error('Failed to get order ID');
-          setLoading(false);
-          return;
-        }
+      console.log('Full API response:', result);
+      
+      if (result.success) {
+        const orderId = result.data?.order?._id || result.order?._id || result.data?._id;
+        const orderNumberValue = result.data?.order?.orderNumber || result.order?.orderNumber || result.data?.orderNumber;
         
-        console.log('Initiating Chapa payment for order:', orderId);
-        setProcessingPayment(true);
+        console.log('Order ID:', orderId);
+        console.log('Order Number:', orderNumberValue);
         
-        const paymentResult = await paymentService.initiatePayment(orderId);
-        console.log('Payment result:', paymentResult);
-        
-        if (paymentResult.success && paymentResult.data?.checkout_url) {
-          console.log('Redirecting to Chapa:', paymentResult.data.checkout_url);
-          window.location.href = paymentResult.data.checkout_url;
+        if (data.paymentMethod === 'chapa') {
+          if (!orderId) {
+            console.error('No order ID found in response:', result);
+            toast.error('Failed to get order ID');
+            setLoading(false);
+            return;
+          }
+          
+          console.log('Initiating Chapa payment for order:', orderId);
+          setProcessingPayment(true);
+          
+          const paymentResult = await paymentService.initiatePayment(orderId);
+          console.log('Payment result:', paymentResult);
+          
+          if (paymentResult.success && paymentResult.data?.checkout_url) {
+            console.log('Redirecting to Chapa:', paymentResult.data.checkout_url);
+            window.location.href = paymentResult.data.checkout_url;
+          } else {
+            toast.error(paymentResult.message || 'Failed to initiate payment');
+            setProcessingPayment(false);
+            setLoading(false);
+          }
         } else {
-          toast.error(paymentResult.message || 'Failed to initiate payment');
-          setProcessingPayment(false);
-          setLoading(false);
+          // Cash on delivery
+          setOrderNumber(orderNumberValue || 'N/A');
+          setOrderPlaced(true);
+          clearCart();
+          toast.success('Order placed successfully!');
         }
       } else {
-        // Cash on delivery
-        setOrderNumber(orderNumber || 'N/A');
-        setOrderPlaced(true);
-        clearCart();
-        toast.success('Order placed successfully!');
+        toast.error(result.message || 'Failed to place order');
+        setLoading(false);
       }
-    } else {
-      toast.error(result.message || 'Failed to place order');
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Failed to place order. Please try again.');
       setLoading(false);
     }
-  } catch (error) {
-    console.error('Checkout error:', error);
-    toast.error('Failed to place order. Please try again.');
-    setLoading(false);
-  }
-};
+  };
+  
   if (orderPlaced) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
@@ -424,7 +424,7 @@ const onSubmit = async (data) => {
                       <span className="font-medium">Chapa Payment</span>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-dark-textMuted">
-                      Pay with CBE Birr, Tele Birr, Amole, Credit Card & more
+                      Pay with CBE Birr (13-digit account), Tele Birr, Amole
                     </p>
                   </div>
                 </label>
@@ -456,7 +456,7 @@ const onSubmit = async (data) => {
               {processingPayment ? (
                 <>
                   <FiLoader className="w-5 h-5 animate-spin" />
-                  Redirecting to Payment...
+                  Redirecting to Chapa Payment...
                 </>
               ) : loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -529,6 +529,18 @@ const onSubmit = async (data) => {
                 </div>
               </div>
             </div>
+            
+            {/* CBE Account Info */}
+            {selectedPaymentMethod === 'chapa' && (
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-xs text-blue-800 dark:text-blue-400 font-medium mb-1">
+                  ℹ️ CBE Birr Payment Info:
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-500">
+                  You'll need your 13-digit CBE account number (e.g., 1000134567890)
+                </p>
+              </div>
+            )}
             
             {/* Security Info */}
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-dark-border">

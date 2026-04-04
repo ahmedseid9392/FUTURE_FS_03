@@ -22,17 +22,18 @@ import { useCartStore } from '../store/cartStore';
 import { useCurrencyContext } from '../context/CurrencyContext';
 import { useAuthStore } from '../store/authStore';
 import { productService } from '../services/productService';
+import RatingStars from '../components/common/RatingStars';
+import ReviewCard from '../components/products/ReviewCard';
+import ReviewForm from '../components/products/ReviewForm';
+import RelatedProducts from '../components/products/RelatedProducts';
 import toast from 'react-hot-toast';
-
-// Import ImageLightbox if you have it, otherwise comment out
-//import ImageLightbox from '../components/common/ImageLightbox';
 
 const ProductPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { items, addToCart } = useCartStore();
   const { formatPrice } = useCurrencyContext();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -43,20 +44,32 @@ const ProductPage = () => {
   const [activeTab, setActiveTab] = useState('description');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [reviews, setReviews] = useState([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [productData, setProductData] = useState(null);
   
   // Fetch product
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['product', id],
     queryFn: () => productService.getById(id),
     enabled: !!id
   });
   
-  // FIXED: Properly extract product from response
+  // Extract product from response
   const product = data?.data?.product || data?.product || null;
+  
+  // Update local product data when fetched
+  useEffect(() => {
+    if (product) {
+      setProductData(product);
+      setReviews(product.ratings || []);
+    }
+  }, [product]);
   
   // Debug logging
   console.log('API Response:', data);
   console.log('Extracted Product:', product);
+  console.log('Reviews:', reviews);
   
   // Check if product is already in cart
   const isInCart = product ? items.some(item => item._id === product._id) : false;
@@ -145,6 +158,47 @@ const ProductPage = () => {
     setIsLightboxOpen(true);
   };
   
+  const handleSubmitReview = async (productId, reviewData) => {
+  console.log('Submitting review for product:', productId, reviewData);
+  setReviewLoading(true);
+  try {
+    const result = await productService.addReview(productId, reviewData);
+    console.log('Review submission result:', result);
+    
+    if (result.success) {
+      // Refetch product to get updated ratings and reviews
+      const updatedProduct = await productService.getById(productId);
+      if (updatedProduct.success) {
+        const newProductData = updatedProduct.data?.product || updatedProduct.product;
+        setProductData(newProductData);
+        setReviews(newProductData.ratings || []);
+        // Refetch the query to update all data
+        refetch();
+      }
+      return { success: true };
+    } else {
+      const errorMsg = result.message || 'Failed to submit review';
+      toast.error(errorMsg);
+      return { success: false, message: errorMsg };
+    }
+  } catch (error) {
+    console.error('Review submission error:', error);
+    toast.error('Failed to submit review');
+    return { success: false, message: 'Failed to submit review' };
+  } finally {
+    setReviewLoading(false);
+  }
+};
+  
+  const handleHelpfulReview = (reviewId) => {
+    console.log('Helpful clicked for review:', reviewId);
+    toast.success('Thank you for your feedback!');
+  };
+  
+  const handleReportReview = (reviewId) => {
+    console.log('Reported review:', reviewId);
+  };
+  
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -180,6 +234,8 @@ const ProductPage = () => {
   const discount = product.discountPercentage || 0;
   const inStock = product.stock > 0;
   const allImages = product.images || [mainImage];
+  const averageRating = product.averageRating || 0;
+  const totalReviews = product.totalReviews || reviews.length || 0;
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -240,21 +296,7 @@ const ProductPage = () => {
               {product.name}
             </h1>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <FiStar
-                    key={i}
-                    className={`w-4 h-4 ${
-                      i < Math.floor(product.averageRating)
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                ))}
-                <span className="text-sm text-gray-500 ml-1">
-                  ({product.totalReviews || 0} reviews)
-                </span>
-              </div>
+              <RatingStars rating={averageRating} totalReviews={totalReviews} size="md" />
               <span className="text-sm text-gray-500">{product.category}</span>
             </div>
           </div>
@@ -482,15 +524,80 @@ const ProductPage = () => {
           )}
           
           {activeTab === 'reviews' && (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
-              <button className="btn-outline mt-4">Write a Review</button>
+            <div className="space-y-8">
+              {/* Review Form - Only for logged in users */}
+              {isAuthenticated ? (
+                <div className="border-b border-gray-200 dark:border-dark-border pb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Write a Review
+                  </h3>
+                  <ReviewForm
+                    productId={product._id}
+                    onSubmit={handleSubmitReview}
+                    onSuccess={() => {
+                      setTimeout(() => {
+                        const reviewsSection = document.getElementById('reviews-section');
+                        if (reviewsSection) {
+                          reviewsSection.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }, 100);
+                    }}
+                    loading={reviewLoading}
+                  />
+                </div>
+              ) : (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-center mb-8">
+                  <p className="text-yellow-800 dark:text-yellow-400">
+                    Please <Link to="/login" className="font-semibold underline">login</Link> to write a review
+                  </p>
+                </div>
+              )}
+              
+              {/* Reviews List */}
+              <div id="reviews-section">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Customer Reviews ({reviews.length})
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <RatingStars rating={averageRating} totalReviews={reviews.length} size="md" />
+                  </div>
+                </div>
+                
+                {reviews.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 dark:bg-dark-surface rounded-lg">
+                    <p className="text-gray-500 dark:text-dark-textMuted">
+                      No reviews yet. Be the first to review this product!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                    {reviews.map((review, index) => (
+                      <ReviewCard
+                        key={review._id || index}
+                        review={{
+                          ...review,
+                          user: review.user || { name: 'Anonymous User' }
+                        }}
+                        onHelpful={handleHelpfulReview}
+                        onReport={handleReportReview}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
       </div>
       
-      {/* Simple Lightbox Modal (without external dependency) */}
+      {/* Simple Lightbox Modal */}
+       <RelatedProducts 
+        currentProduct={product}
+        category={product.category}
+        tags={product.tags}
+        productId={product._id}
+      />
       {isLightboxOpen && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={() => setIsLightboxOpen(false)}>
           <button

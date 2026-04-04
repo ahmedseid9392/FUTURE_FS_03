@@ -151,18 +151,21 @@ export const productService = {
     }
   },
   
-  addReview: async (productId, reviewData) => {
-    try {
-      const response = await api.post(`/products/${productId}/reviews`, reviewData);
-      return response.data;
-    } catch (error) {
-      console.error('Add review error:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Failed to add review' 
-      };
-    }
-  },
+ addReview: async (productId, reviewData) => {
+  try {
+    console.log('Sending review data:', { productId, reviewData });
+    const response = await api.post(`/products/${productId}/reviews`, reviewData);
+    console.log('Review response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Add review error:', error);
+    console.error('Error response:', error.response?.data);
+    return { 
+      success: false, 
+      message: error.response?.data?.message || 'Failed to add review' 
+    };
+  }
+},
   
   create: async (productData) => {
     try {

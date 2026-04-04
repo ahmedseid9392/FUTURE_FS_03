@@ -26,6 +26,8 @@ const ProductGrid = ({ products, loading, columns = 4 }) => {
     );
   }
   
+  console.log('ProductGrid rendering products:', products.length);
+  
   const gridCols = {
     1: 'grid-cols-1',
     2: 'grid-cols-1 sm:grid-cols-2',

@@ -16,12 +16,15 @@ import {
   FiZap
 } from 'react-icons/fi';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import ProductGrid from '../components/products/ProductGrid';
 import { productService } from '../services/productService';
 import { useCurrencyContext } from '../context/CurrencyContext';
 import CurrencyToggle from '../components/common/CurrencyToggle';
+import SearchAutocomplete from '../components/search/SearchAutocomplete';
 
 const ShopPage = () => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({
     category: '',
     minPrice: '',
@@ -32,11 +35,19 @@ const ShopPage = () => {
   });
   
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
-  const { currencyCode, formatPrice, convertPrice } = useCurrencyContext();
+  const { currencyCode, formatPrice } = useCurrencyContext();
+  
+  // Handle search from autocomplete
+  const handleSearch = (searchQuery) => {
+    if (searchQuery) {
+      setFilters(prev => ({ ...prev, search: searchQuery, page: 1 }));
+      navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
+    }
+  };
   
   // Fetch categories
   useEffect(() => {
@@ -78,8 +89,8 @@ const ShopPage = () => {
     enabled: true
   });
   
-  const products = productsResult?.success ? (productsResult.data?.products || []) : [];
-  const pagination = productsResult?.success ? (productsResult.data?.pagination || { page: 1, pages: 1, total: 0 }) : { page: 1, pages: 1, total: 0 };
+  const products = productsResult?.success ? (productsResult.data?.products || productsResult.products || []) : [];
+  const pagination = productsResult?.success ? (productsResult.data?.pagination || productsResult.pagination || { page: 1, pages: 1, total: 0 }) : { page: 1, pages: 1, total: 0 };
   
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
@@ -94,11 +105,6 @@ const ShopPage = () => {
       sort: '-createdAt',
       page: 1
     });
-  };
-  
-  const handleSearch = (e) => {
-    e.preventDefault();
-    refetch();
   };
   
   const sortOptions = [
@@ -150,28 +156,14 @@ const ShopPage = () => {
       {/* Search and Filter Bar */}
       <div className="sticky top-16 z-30 bg-white/80 dark:bg-dark-card/80 backdrop-blur-lg rounded-xl shadow-sm mb-8 p-4 border border-gray-200 dark:border-dark-border">
         <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search Input */}
-          <form onSubmit={handleSearch} className="flex-1">
-            <div className="relative">
-              <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search products by name, description, or tags..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="input-field pl-12 pr-12 py-3"
-              />
-              {filters.search && (
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange('search', '')}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <FiX className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </form>
+          {/* Search Autocomplete */}
+          <div className="flex-1">
+            <SearchAutocomplete 
+              onSearch={handleSearch} 
+              placeholder="Search products by name, description, or tags..."
+              initialValue={filters.search}
+            />
+          </div>
           
           {/* Action Buttons */}
           <div className="flex gap-3">

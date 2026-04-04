@@ -14,6 +14,8 @@ const AuthCallback = () => {
     const userParam = params.get('user');
     const error = params.get('error');
 
+    console.log('Auth callback received:', { token: !!token, userParam: !!userParam, error });
+
     if (error) {
       toast.error('Google authentication failed. Please try again.');
       navigate('/login');
@@ -23,6 +25,8 @@ const AuthCallback = () => {
     if (token && userParam) {
       try {
         const user = JSON.parse(decodeURIComponent(userParam));
+        console.log('User data from Google:', user);
+        
         setToken(token);
         setUser(user);
         localStorage.setItem('token', token);
@@ -42,6 +46,7 @@ const AuthCallback = () => {
         navigate('/login');
       }
     } else {
+      console.error('Missing token or user data');
       navigate('/login');
     }
   }, [location, navigate, setUser, setToken]);

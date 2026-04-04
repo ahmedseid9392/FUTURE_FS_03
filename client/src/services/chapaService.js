@@ -1,5 +1,4 @@
 import axios from 'axios';
-import crypto from 'crypto';
 
 class ChapaService {
   constructor() {
@@ -9,14 +8,10 @@ class ChapaService {
     console.log('🔧 Chapa Service Initialized');
     console.log('📡 API URL:', this.apiUrl);
     console.log('🔑 Secret Key exists:', !!this.secretKey);
-    
-    if (!this.secretKey) {
-      console.warn('⚠️ WARNING: CHAPA_SECRET_KEY is not set in environment variables!');
-    }
   }
 
   /**
-   * Initialize payment
+   * Initialize payment for CBE Birr (Minimum 1000 ETB)
    * @param {Object} paymentData - Payment details
    * @returns {Promise<Object>} - Payment initialization response
    */
@@ -32,59 +27,49 @@ class ChapaService {
         return_url
       } = paymentData;
 
-      // Validate required fields
-      const missingFields = [];
-      if (!amount) missingFields.push('amount');
-      if (!email) missingFields.push('email');
-      if (!tx_ref) missingFields.push('tx_ref');
-      if (!callback_url) missingFields.push('callback_url');
-      if (!return_url) missingFields.push('return_url');
-      
-      if (missingFields.length > 0) {
-        console.log('❌ Missing required fields:', missingFields);
+      // Validate amount - Minimum 1000 ETB for CBE Birr
+      if (!amount || amount < 1000) {
         return {
           success: false,
-          message: `Missing required fields: ${missingFields.join(', ')}`
+          message: `Minimum order amount for CBE Birr is 1000 ETB. Your total is ${amount || 0} ETB. Please add more items.`
         };
       }
 
-      // Validate amount is positive
-      if (amount <= 0) {
-        return {
-          success: false,
-          message: 'Amount must be greater than 0'
-        };
-      }
-
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return {
-          success: false,
-          message: 'Invalid email format'
-        };
+      // Format phone number for Ethiopia
+      let formattedPhone = phone;
+      if (phone) {
+        formattedPhone = phone.replace(/\D/g, '');
+        if (formattedPhone.startsWith('0')) {
+          formattedPhone = '251' + formattedPhone.substring(1);
+        }
+        if (!formattedPhone.startsWith('251')) {
+          formattedPhone = '251' + formattedPhone;
+        }
       }
 
       const payload = {
         amount: Math.round(amount),
         currency: 'ETB',
         email: email,
-        first_name: name.split(' ')[0] || name,
-        last_name: name.split(' ')[1] || 'Customer',
-        phone_number: phone || '0000000000',
+        first_name: name?.split(' ')[0] || 'Customer',
+        last_name: name?.split(' ')[1] || 'User',
+        phone_number: formattedPhone || '251911234567',
         tx_ref: tx_ref,
         callback_url: callback_url,
         return_url: return_url,
         customization: {
           title: 'Jams Boutique',
           description: `Order Payment - ${tx_ref}`
-        }
+        },
+        // Enable CBE Birr specifically
+        payment_options: 'cbe'
       };
 
       console.log('📤 Sending payment request to Chapa:', {
         amount: payload.amount,
         currency: payload.currency,
         email: payload.email,
+        phone: payload.phone_number,
         tx_ref: payload.tx_ref
       });
 
@@ -99,23 +84,31 @@ class ChapaService {
         }
       );
 
-      console.log('✅ Chapa response:', response.data);
+      console.log('✅ Chapa response status:', response.data.status);
+      console.log('✅ Chapa response data:', JSON.stringify(response.data, null, 2));
 
-      if (response.data.status === 'success' && response.data.data?.checkout_url) {
-        return {
-          success: true,
-          data: response.data
-        };
-      } else {
-        return {
-          success: false,
-          message: response.data.message || 'Payment initialization failed'
-        };
+      if (response.data.status === 'success') {
+        const checkoutUrl = response.data.data?.checkout_url || response.data.checkout_url;
+        
+        if (checkoutUrl) {
+          console.log('✅ Checkout URL:', checkoutUrl);
+          return {
+            success: true,
+            data: {
+              checkout_url: checkoutUrl,
+              tx_ref: tx_ref
+            }
+          };
+        }
       }
+      
+      return {
+        success: false,
+        message: response.data.message || 'Payment initialization failed'
+      };
     } catch (error) {
       console.error('❌ Chapa initialization error:', {
         status: error.response?.status,
-        statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message
       });
@@ -135,12 +128,12 @@ class ChapaService {
   }
 
   /**
-   * Verify payment
-   * @param {string} tx_ref - Transaction reference
-   * @returns {Promise<Object>} - Payment verification response
+   * Verify payment status
    */
   async verifyPayment(tx_ref) {
     try {
+      console.log('🔍 Verifying payment for tx_ref:', tx_ref);
+      
       const response = await axios.get(
         `${this.apiUrl}/transaction/verify/${tx_ref}`,
         {
@@ -150,12 +143,21 @@ class ChapaService {
         }
       );
 
-      return {
-        success: true,
-        data: response.data
-      };
+      console.log('✅ Verification response:', response.data);
+
+      if (response.data.status === 'success') {
+        return {
+          success: true,
+          data: response.data
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data.message || 'Payment verification failed'
+        };
+      }
     } catch (error) {
-      console.error('Chapa verification error:', error.response?.data || error.message);
+      console.error('❌ Chapa verification error:', error.response?.data || error.message);
       return {
         success: false,
         message: error.response?.data?.message || 'Payment verification failed'
@@ -165,7 +167,6 @@ class ChapaService {
 
   /**
    * Generate unique transaction reference
-   * @returns {string} - Unique transaction reference
    */
   generateTransactionReference() {
     const timestamp = Date.now();

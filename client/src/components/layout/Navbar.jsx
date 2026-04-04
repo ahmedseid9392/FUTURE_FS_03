@@ -1,21 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HiMenu, HiX } from 'react-icons/hi';
-import { FiShoppingBag, FiLogOut, FiUser, FiPackage, FiClipboard } from 'react-icons/fi';
+import { FiShoppingBag, FiLogOut, FiUser, FiPackage, FiClipboard, FiSearch } from 'react-icons/fi';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import ThemeToggle from '../common/ThemeToggle';
-//import CurrencyToggle from '../common/CurrencyToggle';
 import UserAvatar from '../common/UserAvatar';
+import SearchAutocomplete from '../search/SearchAutocomplete';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const cartItemsCount = useCartStore((state) => state.getTotalItems());
   const { user, isAuthenticated, logout, checkAuth } = useAuthStore();
-  
+
+  const handleSearch = (query) => {
+    if (query) {
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+      setMobileSearchOpen(false);
+    }
+  };
+
   useEffect(() => {
     // Check authentication on mount
     checkAuth();
@@ -75,10 +83,22 @@ const Navbar = () => {
             ))}
           </div>
           
+          {/* Desktop Search */}
+          <div className="hidden md:flex items-center w-80">
+            <SearchAutocomplete onSearch={handleSearch} placeholder="Search products..." />
+          </div>
+          
           {/* Icons */}
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            {/* <CurrencyToggle /> */}
+            
+            {/* Mobile Search Button */}
+            <button
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+              className="md:hidden text-gray-700 dark:text-dark-text"
+            >
+              <FiSearch className="w-5 h-5" />
+            </button>
             
             {/* Cart Icon - Only for customers (not admin) */}
             {isAuthenticated && user?.role === 'customer' && (
@@ -200,6 +220,13 @@ const Navbar = () => {
             </button>
           </div>
         </div>
+        
+        {/* Mobile Search Bar (expanded) */}
+        {mobileSearchOpen && (
+          <div className="md:hidden py-4 border-t border-gray-200 dark:border-dark-border">
+            <SearchAutocomplete onSearch={handleSearch} placeholder="Search products..." />
+          </div>
+        )}
         
         {/* Mobile Navigation */}
         {isOpen && (
