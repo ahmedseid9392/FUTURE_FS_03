@@ -21,6 +21,7 @@ import {
 import { orderService } from '../services/orderService';
 import { useCurrencyContext } from '../context/CurrencyContext';
 import { useAuthStore } from '../store/authStore';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import toast from 'react-hot-toast';
 
 const OrderDetailsPage = () => {
@@ -29,6 +30,7 @@ const OrderDetailsPage = () => {
   const { user } = useAuthStore();
   const { formatPrice } = useCurrencyContext();
   const [cancelling, setCancelling] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['order', id],
@@ -88,21 +90,20 @@ const OrderDetailsPage = () => {
   };
   
   const handleCancelOrder = async () => {
-    if (window.confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
-      setCancelling(true);
-      try {
-        const result = await orderService.cancel(id, 'Cancelled by customer');
-        if (result.success) {
-          toast.success('Order cancelled successfully');
-          refetch();
-        } else {
-          toast.error(result.message || 'Failed to cancel order');
-        }
-      } catch (error) {
-        toast.error('Failed to cancel order');
-      } finally {
-        setCancelling(false);
+    setCancelling(true);
+    try {
+      const result = await orderService.cancel(id, 'Cancelled by customer');
+      if (result.success) {
+        toast.success('Order cancelled successfully');
+        setIsCancelModalOpen(false);
+        refetch();
+      } else {
+        toast.error(result.message || 'Failed to cancel order');
       }
+    } catch (error) {
+      toast.error('Failed to cancel order');
+    } finally {
+      setCancelling(false);
     }
   };
   
@@ -146,6 +147,18 @@ const OrderDetailsPage = () => {
   
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Cancel Order Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onConfirm={handleCancelOrder}
+        title="Cancel Order"
+        message={`Are you sure you want to cancel order #${order.orderNumber || order._id?.slice(-8)}? This action cannot be undone.`}
+        confirmText="Yes, Cancel Order"
+        cancelText="No, Keep Order"
+        type="danger"
+      />
+      
       {/* Header */}
       <div className="mb-6">
         <Link 
@@ -245,9 +258,9 @@ const OrderDetailsPage = () => {
         {canCancel && (
           <div className="mt-6 pt-4 border-t border-gray-200 dark:border-dark-border">
             <button
-              onClick={handleCancelOrder}
+              onClick={() => setIsCancelModalOpen(true)}
               disabled={cancelling}
-              className="text-red-600 hover:text-red-700 text-sm flex items-center gap-1 disabled:opacity-50"
+              className="text-red-600 hover:text-red-700 text-sm flex items-center gap-1 disabled:opacity-50 transition-colors"
             >
               {cancelling ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>

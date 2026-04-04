@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiShoppingBag, 
-  FiHeart, 
-  FiShare2, 
-  FiMinus, 
-  FiPlus, 
-  FiCheck, 
+import {
+  FiShoppingBag,
+  FiHeart,
+  FiShare2,
+  FiMinus,
+  FiPlus,
+  FiCheck,
   FiTruck,
   FiRefreshCw,
   FiShield,
@@ -27,14 +27,14 @@ import ReviewCard from '../components/products/ReviewCard';
 import ReviewForm from '../components/products/ReviewForm';
 import RelatedProducts from '../components/products/RelatedProducts';
 import toast from 'react-hot-toast';
-
+import RecommendationSection from '../components/recommendations/RecommendationSection';
 const ProductPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { items, addToCart } = useCartStore();
   const { formatPrice } = useCurrencyContext();
   const { isAuthenticated, user } = useAuthStore();
-  
+
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -47,17 +47,17 @@ const ProductPage = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [productData, setProductData] = useState(null);
-  
+
   // Fetch product
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['product', id],
     queryFn: () => productService.getById(id),
     enabled: !!id
   });
-  
+
   // Extract product from response
   const product = data?.data?.product || data?.product || null;
-  
+
   // Update local product data when fetched
   useEffect(() => {
     if (product) {
@@ -65,15 +65,15 @@ const ProductPage = () => {
       setReviews(product.ratings || []);
     }
   }, [product]);
-  
+
   // Debug logging
   console.log('API Response:', data);
   console.log('Extracted Product:', product);
   console.log('Reviews:', reviews);
-  
+
   // Check if product is already in cart
   const isInCart = product ? items.some(item => item._id === product._id) : false;
-  
+
   // Reset selections when product changes
   useEffect(() => {
     if (product) {
@@ -83,68 +83,68 @@ const ProductPage = () => {
       setSelectedImage(0);
     }
   }, [product]);
-  
+
   const handleAddToCart = () => {
     if (!isAuthenticated) {
       toast.error('Please login to add items to cart');
       setTimeout(() => navigate('/login'), 1500);
       return;
     }
-    
+
     if (isInCart) {
       toast.error(`${product.name} is already in your cart!`);
       return;
     }
-    
+
     if (!selectedSize && product?.sizes?.length > 0) {
       toast.error('Please select a size');
       return;
     }
-    
+
     if (!selectedColor && product?.colors?.length > 0) {
       toast.error('Please select a color');
       return;
     }
-    
+
     if (quantity > product?.stock) {
       toast.error(`Only ${product.stock} items available`);
       return;
     }
-    
+
     setIsAdding(true);
     addToCart(product, quantity, selectedSize, selectedColor);
     toast.success(`${product.name} added to cart!`);
     setTimeout(() => setIsAdding(false), 500);
   };
-  
+
   const handleBuyNow = () => {
     if (!isAuthenticated) {
       toast.error('Please login to proceed with checkout');
       setTimeout(() => navigate('/login'), 1500);
       return;
     }
-    
+
     if (isInCart) {
       toast.error(`${product.name} is already in your cart. Proceed to checkout.`);
       setTimeout(() => navigate('/cart'), 500);
       return;
     }
-    
+
     handleAddToCart();
     setTimeout(() => navigate('/cart'), 500);
   };
-  
+
   const handleLike = () => {
     if (!isAuthenticated) {
       toast.error('Please login to like products');
       setTimeout(() => navigate('/login'), 1500);
       return;
     }
-    
+
     setIsLiked(!isLiked);
     toast.success(isLiked ? 'Removed from wishlist' : 'Added to wishlist');
   };
-  
+
   const handleQuantityChange = (type) => {
     if (type === 'increase' && quantity < (product?.stock || 10)) {
       setQuantity(prev => prev + 1);
@@ -152,53 +152,53 @@ const ProductPage = () => {
       setQuantity(prev => prev - 1);
     }
   };
-  
+
   const openLightbox = (index) => {
     setLightboxIndex(index);
     setIsLightboxOpen(true);
   };
-  
+
   const handleSubmitReview = async (productId, reviewData) => {
-  console.log('Submitting review for product:', productId, reviewData);
-  setReviewLoading(true);
-  try {
-    const result = await productService.addReview(productId, reviewData);
-    console.log('Review submission result:', result);
-    
-    if (result.success) {
-      // Refetch product to get updated ratings and reviews
-      const updatedProduct = await productService.getById(productId);
-      if (updatedProduct.success) {
-        const newProductData = updatedProduct.data?.product || updatedProduct.product;
-        setProductData(newProductData);
-        setReviews(newProductData.ratings || []);
-        // Refetch the query to update all data
-        refetch();
+    console.log('Submitting review for product:', productId, reviewData);
+    setReviewLoading(true);
+    try {
+      const result = await productService.addReview(productId, reviewData);
+      console.log('Review submission result:', result);
+
+      if (result.success) {
+        // Refetch product to get updated ratings and reviews
+        const updatedProduct = await productService.getById(productId);
+        if (updatedProduct.success) {
+          const newProductData = updatedProduct.data?.product || updatedProduct.product;
+          setProductData(newProductData);
+          setReviews(newProductData.ratings || []);
+          // Refetch the query to update all data
+          refetch();
+        }
+        return { success: true };
+      } else {
+        const errorMsg = result.message || 'Failed to submit review';
+        toast.error(errorMsg);
+        return { success: false, message: errorMsg };
       }
-      return { success: true };
-    } else {
-      const errorMsg = result.message || 'Failed to submit review';
-      toast.error(errorMsg);
-      return { success: false, message: errorMsg };
+    } catch (error) {
+      console.error('Review submission error:', error);
+      toast.error('Failed to submit review');
+      return { success: false, message: 'Failed to submit review' };
+    } finally {
+      setReviewLoading(false);
     }
-  } catch (error) {
-    console.error('Review submission error:', error);
-    toast.error('Failed to submit review');
-    return { success: false, message: 'Failed to submit review' };
-  } finally {
-    setReviewLoading(false);
-  }
-};
-  
+  };
+
   const handleHelpfulReview = (reviewId) => {
     console.log('Helpful clicked for review:', reviewId);
     toast.success('Thank you for your feedback!');
   };
-  
+
   const handleReportReview = (reviewId) => {
     console.log('Reported review:', reviewId);
   };
-  
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -217,7 +217,7 @@ const ProductPage = () => {
       </div>
     );
   }
-  
+
   if (error || !product) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12 text-center">
@@ -229,14 +229,14 @@ const ProductPage = () => {
       </div>
     );
   }
-  
+
   const mainImage = product.images?.[selectedImage] || product.images?.[0] || { url: 'https://via.placeholder.com/600' };
   const discount = product.discountPercentage || 0;
   const inStock = product.stock > 0;
   const allImages = product.images || [mainImage];
   const averageRating = product.averageRating || 0;
   const totalReviews = product.totalReviews || reviews.length || 0;
-  
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
@@ -247,12 +247,12 @@ const ProductPage = () => {
         <span className="mx-2">/</span>
         <span className="text-boutique-primary">{product.name}</span>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Image Gallery */}
         <div>
           {/* Main Image with Click to Zoom */}
-          <div 
+          <div
             className="relative overflow-hidden rounded-lg bg-gray-100 dark:bg-dark-card cursor-pointer group"
             onClick={() => openLightbox(selectedImage)}
           >
@@ -267,7 +267,7 @@ const ProductPage = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Thumbnails */}
           {allImages.length > 1 && (
             <div className="flex gap-2 mt-4">
@@ -275,11 +275,10 @@ const ProductPage = () => {
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
-                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                    selectedImage === idx 
-                      ? 'border-boutique-primary' 
+                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === idx
+                      ? 'border-boutique-primary'
                       : 'border-transparent hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <img src={img.url} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
                 </button>
@@ -287,7 +286,7 @@ const ProductPage = () => {
             </div>
           )}
         </div>
-        
+
         {/* Product Info */}
         <div className="space-y-6">
           {/* Title & Rating */}
@@ -300,7 +299,7 @@ const ProductPage = () => {
               <span className="text-sm text-gray-500">{product.category}</span>
             </div>
           </div>
-          
+
           {/* Price */}
           <div className="flex items-center gap-3">
             <span className="text-3xl font-bold text-boutique-primary">
@@ -317,7 +316,7 @@ const ProductPage = () => {
               </>
             )}
           </div>
-          
+
           {/* Stock Status */}
           <div className="flex items-center gap-2">
             {inStock ? (
@@ -334,7 +333,7 @@ const ProductPage = () => {
               </>
             )}
           </div>
-          
+
           {/* In Cart Alert */}
           {isInCart && (
             <div className="bg-green-100 dark:bg-green-900/20 border border-green-500 rounded-lg p-3">
@@ -344,51 +343,69 @@ const ProductPage = () => {
               </div>
             </div>
           )}
-          
+
           {/* Size Selection */}
+
           {product.sizes && product.sizes.length > 0 && (
             <div>
-              <label className="block text-sm font-medium mb-2">Size</label>
-              <div className="flex flex-wrap gap-2">
+              <label className="block text-sm font-medium mb-2">
+                Size <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-wrap gap-3">
                 {product.sizes.map(size => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 border rounded-md transition-all ${
-                      selectedSize === size
-                        ? 'border-boutique-primary bg-boutique-primary text-white'
+                    className={`relative px-5 py-2 border-2 rounded-lg transition-all ${selectedSize === size
+                        ? 'border-boutique-primary bg-boutique-primary/10 text-boutique-primary'
                         : 'border-gray-300 hover:border-boutique-primary'
-                    }`}
+                      }`}
                   >
                     {size}
+                    {selectedSize === size && (
+                      <span className="absolute -top-2 -right-2 w-4 h-4 bg-boutique-primary rounded-full flex items-center justify-center">
+                        <FiCheck className="w-3 h-3 text-white" />
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             </div>
           )}
-          
-          {/* Color Selection */}
+
+          {/*  Color Selection with better styling */}
           {product.colors && product.colors.length > 0 && (
             <div>
-              <label className="block text-sm font-medium mb-2">Color</label>
-              <div className="flex flex-wrap gap-2">
+              <label className="block text-sm font-medium mb-2">
+                Color <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-wrap gap-3">
                 {product.colors.map(color => (
                   <button
                     key={color}
                     onClick={() => setSelectedColor(color)}
-                    className={`px-4 py-2 border rounded-md transition-all ${
-                      selectedColor === color
-                        ? 'border-boutique-primary bg-boutique-primary text-white'
-                        : 'border-gray-300 hover:border-boutique-primary'
-                    }`}
+                    className={`relative w-10 h-10 rounded-full border-2 transition-all ${selectedColor === color
+                        ? 'border-boutique-primary scale-110'
+                        : 'border-gray-300 hover:scale-105'
+                      }`}
+                    style={{ backgroundColor: color.toLowerCase() }}
+                    title={color}
                   >
-                    {color}
+                    {selectedColor === color && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <FiCheck className="w-4 h-4 text-white drop-shadow-md" />
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
+              {selectedColor && (
+                <p className="text-sm text-gray-600 mt-2">
+                  Selected: <span className="font-medium">{selectedColor}</span>
+                </p>
+              )}
             </div>
           )}
-          
           {/* Quantity Selector */}
           <div>
             <label className="block text-sm font-medium mb-2">Quantity</label>
@@ -411,17 +428,16 @@ const ProductPage = () => {
               <span className="text-sm text-gray-500">Max: {product.stock}</span>
             </div>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex gap-4 pt-4">
             <button
               onClick={handleAddToCart}
               disabled={!inStock || isAdding || isInCart}
-              className={`flex-1 py-3 flex items-center justify-center gap-2 rounded-md transition-all ${
-                isInCart 
+              className={`flex-1 py-3 flex items-center justify-center gap-2 rounded-md transition-all ${isInCart
                   ? 'bg-gray-400 cursor-not-allowed text-white'
                   : 'btn-primary disabled:opacity-50'
-              }`}
+                }`}
             >
               {isAdding ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -437,7 +453,7 @@ const ProductPage = () => {
                 </>
               )}
             </button>
-            
+
             <button
               onClick={handleBuyNow}
               disabled={!inStock}
@@ -445,19 +461,18 @@ const ProductPage = () => {
             >
               Buy Now
             </button>
-            
+
             <button
               onClick={handleLike}
-              className={`p-3 border rounded-md transition-all hover:scale-105 ${
-                isLiked 
+              className={`p-3 border rounded-md transition-all hover:scale-105 ${isLiked
                   ? 'bg-red-500 text-white border-red-500'
                   : 'hover:bg-gray-100'
-              }`}
+                }`}
             >
               <FiHeart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
             </button>
           </div>
-          
+
           {/* Login Prompt for Guests */}
           {!isAuthenticated && (
             <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mt-4">
@@ -469,7 +484,7 @@ const ProductPage = () => {
               </div>
             </div>
           )}
-          
+
           {/* Shipping Info */}
           <div className="border-t border-gray-200 dark:border-dark-border pt-6 space-y-3">
             <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-textMuted">
@@ -487,7 +502,7 @@ const ProductPage = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Product Details Tabs */}
       <div className="mt-16">
         <div className="flex border-b border-gray-200 dark:border-dark-border">
@@ -495,24 +510,23 @@ const ProductPage = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-medium capitalize transition-all ${
-                activeTab === tab
+              className={`px-6 py-3 font-medium capitalize transition-all ${activeTab === tab
                   ? 'text-boutique-primary border-b-2 border-boutique-primary'
                   : 'text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               {tab}
             </button>
           ))}
         </div>
-        
+
         <div className="py-6">
           {activeTab === 'description' && (
             <p className="text-gray-600 dark:text-dark-textMuted leading-relaxed">
               {product.description}
             </p>
           )}
-          
+
           {activeTab === 'details' && (
             <div className="space-y-2 text-gray-600 dark:text-dark-textMuted">
               <p><strong>Category:</strong> {product.category}</p>
@@ -522,7 +536,7 @@ const ProductPage = () => {
               )}
             </div>
           )}
-          
+
           {activeTab === 'reviews' && (
             <div className="space-y-8">
               {/* Review Form - Only for logged in users */}
@@ -552,7 +566,7 @@ const ProductPage = () => {
                   </p>
                 </div>
               )}
-              
+
               {/* Reviews List */}
               <div id="reviews-section">
                 <div className="flex justify-between items-center mb-4">
@@ -563,7 +577,7 @@ const ProductPage = () => {
                     <RatingStars rating={averageRating} totalReviews={reviews.length} size="md" />
                   </div>
                 </div>
-                
+
                 {reviews.length === 0 ? (
                   <div className="text-center py-8 bg-gray-50 dark:bg-dark-surface rounded-lg">
                     <p className="text-gray-500 dark:text-dark-textMuted">
@@ -590,13 +604,27 @@ const ProductPage = () => {
           )}
         </div>
       </div>
-      
+
       {/* Simple Lightbox Modal */}
-       <RelatedProducts 
+      <RelatedProducts
         currentProduct={product}
         category={product.category}
         tags={product.tags}
         productId={product._id}
+      />
+
+      <RecommendationSection
+        title="Frequently Bought Together"
+        type="frequently-bought"
+        productId={product._id}
+        limit={4}
+      />
+
+      <RecommendationSection
+        title="You May Also Like"
+        type="similar"
+        productId={product._id}
+        limit={4}
       />
       {isLightboxOpen && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={() => setIsLightboxOpen(false)}>
@@ -606,7 +634,7 @@ const ProductPage = () => {
           >
             ×
           </button>
-          
+
           {allImages.length > 1 && (
             <>
               <button
@@ -629,7 +657,7 @@ const ProductPage = () => {
               </button>
             </>
           )}
-          
+
           <img
             src={allImages[lightboxIndex]?.url}
             alt="Product"
@@ -639,6 +667,7 @@ const ProductPage = () => {
         </div>
       )}
     </div>
+
   );
 };
 

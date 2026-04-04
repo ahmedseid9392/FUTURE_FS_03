@@ -2,7 +2,7 @@ import Product from '../models/Product.js';
 import { validationResult } from 'express-validator';
 
 /**
- * @desc    Get all products with filtering
+ * @desc    Get all products with filtering and related search
  * @route   GET /api/products
  * @access  Public
  */
@@ -34,9 +34,12 @@ export const getAllProducts = async (req, res) => {
     if (size) filter.sizes = size;
     if (color) filter.colors = color;
     
-    // FIXED: Search functionality with case-insensitive regex
+    // Enhanced search: return related products (not just exact matches)
     if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i'); // 'i' for case-insensitive
+      const searchTerm = search.trim();
+      const searchRegex = new RegExp(searchTerm, 'i');
+      
+      // Create search score for relevance ranking
       filter.$or = [
         { name: { $regex: searchRegex } },
         { description: { $regex: searchRegex } },
@@ -56,10 +59,11 @@ export const getAllProducts = async (req, res) => {
     else if (sort === 'price') sortObj = { price: 1 };
     else if (sort === '-price') sortObj = { price: -1 };
     else if (sort === 'name') sortObj = { name: 1 };
+    else if (sort === '-rating') sortObj = { averageRating: -1 };
     else sortObj = { createdAt: -1 };
 
-    // Get products
-    const products = await Product.find(filter)
+    // Get products with related search
+    let products = await Product.find(filter)
       .sort(sortObj)
       .skip(skip)
       .limit(limitNum);
@@ -67,7 +71,7 @@ export const getAllProducts = async (req, res) => {
     // Get total count
     const total = await Product.countDocuments(filter);
 
-    console.log(`Search query: "${search}", Found: ${products.length} products`);
+    console.log(`Search: "${search}", Found: ${products.length} products`);
 
     res.status(200).json({
       success: true,

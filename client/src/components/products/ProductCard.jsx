@@ -8,6 +8,9 @@ import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import RatingStars from '../common/RatingStars';
 
+
+
+
 const ProductCard = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +20,10 @@ const ProductCard = ({ product }) => {
   const { items } = useCartStore();
   const { formatPrice } = useCurrencyContext();
   const { isAuthenticated } = useAuthStore();
+
+  // Add state for selected variant (for display only)
+const [selectedVariantSize, setSelectedVariantSize] = useState('');
+const [selectedVariantColor, setSelectedVariantColor] = useState('');
   
   // Check if product is already in cart
   const isInCart = items.some(item => item._id === product._id);
@@ -178,6 +185,43 @@ const ProductCard = ({ product }) => {
               </span>
             )}
           </div>
+ {/* Sizes */}
+{product.sizes && product.sizes.length > 0 && (
+  <div className="mt-2">
+    <div className="flex items-center gap-1 flex-wrap">
+      {product.sizes.slice(0, 4).map(size => (
+        <span
+          key={size}
+          className="text-xs px-2 py-0.5 border rounded-md bg-gray-50 dark:bg-dark-card"
+        >
+          {size}
+        </span>
+      ))}
+      {product.sizes.length > 4 && (
+        <span className="text-xs text-gray-400">+{product.sizes.length - 4}</span>
+      )}
+    </div>
+  </div>
+)}
+
+{/* Colors */}
+{product.colors && product.colors.length > 0 && (
+  <div className="mt-2">
+    <div className="flex items-center gap-1 flex-wrap">
+      {product.colors.slice(0, 5).map(color => (
+        <div
+          key={color}
+          className="w-5 h-5 rounded-full border border-gray-300 shadow-sm"
+          style={{ backgroundColor: color.toLowerCase() }}
+          title={color}
+        />
+      ))}
+      {product.colors.length > 5 && (
+        <span className="text-xs text-gray-400">+{product.colors.length - 5}</span>
+      )}
+    </div>
+  </div>
+)}
           
           {/* Rating */}
 {product.averageRating > 0 && (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { FiShoppingBag, FiLogOut, FiUser, FiPackage, FiClipboard, FiSearch } from 'react-icons/fi';
 import { useCartStore } from '../../store/cartStore';
@@ -14,12 +14,17 @@ const Navbar = () => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const cartItemsCount = useCartStore((state) => state.getTotalItems());
   const { user, isAuthenticated, logout, checkAuth } = useAuthStore();
 
   const handleSearch = (query) => {
-    if (query) {
+    if (query && query.trim()) {
       navigate(`/search?q=${encodeURIComponent(query)}`);
+      setMobileSearchOpen(false);
+    } else {
+      // Clear search - navigate to shop page to show all products
+      navigate('/shop');
       setMobileSearchOpen(false);
     }
   };
@@ -59,6 +64,14 @@ const Navbar = () => {
     { name: 'Contact', path: '/contact' },
   ];
   
+  // Check if link is active
+  const isActiveLink = (path) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+  
   return (
     <nav className="bg-white dark:bg-dark-surface shadow-md sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -70,15 +83,23 @@ const Navbar = () => {
             </Link>
           </div>
           
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation with Active Link Indicator */}
           <div className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className="text-gray-700 dark:text-dark-text hover:text-boutique-primary transition-colors"
+                className={`relative px-1 py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary transition-colors group ${
+                  isActiveLink(link.path) ? 'text-boutique-primary' : ''
+                }`}
               >
                 {link.name}
+                {/* Active Indicator */}
+                {isActiveLink(link.path) && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-boutique-primary rounded-full"></span>
+                )}
+                {/* Hover Indicator */}
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-boutique-primary rounded-full scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
               </Link>
             ))}
           </div>
@@ -228,17 +249,24 @@ const Navbar = () => {
           </div>
         )}
         
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation with Active Link Indicator */}
         {isOpen && (
           <div className="md:hidden py-4 border-t dark:border-dark-border">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"
+                className={`block py-2 transition-colors ${
+                  isActiveLink(link.path)
+                    ? 'text-boutique-primary font-semibold'
+                    : 'text-gray-700 dark:text-dark-text hover:text-boutique-primary'
+                }`}
                 onClick={() => setIsOpen(false)}
               >
                 {link.name}
+                {isActiveLink(link.path) && (
+                  <span className="ml-2 text-xs text-boutique-primary">✓</span>
+                )}
               </Link>
             ))}
             

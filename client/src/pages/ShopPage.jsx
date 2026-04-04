@@ -16,15 +16,16 @@ import {
   FiZap
 } from 'react-icons/fi';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ProductGrid from '../components/products/ProductGrid';
 import { productService } from '../services/productService';
 import { useCurrencyContext } from '../context/CurrencyContext';
 import CurrencyToggle from '../components/common/CurrencyToggle';
 import SearchAutocomplete from '../components/search/SearchAutocomplete';
-
+import RecommendationSection from '../components/recommendations/RecommendationSection';
 const ShopPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [filters, setFilters] = useState({
     category: '',
     minPrice: '',
@@ -41,11 +42,22 @@ const ShopPage = () => {
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
   const { currencyCode, formatPrice } = useCurrencyContext();
   
+  // Get search param from URL on load
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const searchParam = params.get('search');
+    if (searchParam) {
+      setFilters(prev => ({ ...prev, search: searchParam, page: 1 }));
+    }
+  }, [location.search]);
+  
   // Handle search from autocomplete
   const handleSearch = (searchQuery) => {
+    setFilters(prev => ({ ...prev, search: searchQuery || '', page: 1 }));
     if (searchQuery) {
-      setFilters(prev => ({ ...prev, search: searchQuery, page: 1 }));
       navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
+    } else {
+      navigate('/shop');
     }
   };
   
@@ -72,13 +84,12 @@ const ShopPage = () => {
     fetchCategories();
   }, []);
   
-  // Count active filters
+  // Count active filters (excluding search for display purposes)
   useEffect(() => {
     let count = 0;
     if (filters.category) count++;
     if (filters.minPrice) count++;
     if (filters.maxPrice) count++;
-    if (filters.search) count++;
     setActiveFiltersCount(count);
   }, [filters]);
   
@@ -105,6 +116,12 @@ const ShopPage = () => {
       sort: '-createdAt',
       page: 1
     });
+    navigate('/shop');
+  };
+  
+  const clearSearch = () => {
+    setFilters(prev => ({ ...prev, search: '', page: 1 }));
+    navigate('/shop');
   };
   
   const sortOptions = [
@@ -218,6 +235,23 @@ const ShopPage = () => {
             <CurrencyToggle />
           </div>
         </div>
+        
+        {/* Active Search Display with Clear Button */}
+        {filters.search && (
+          <div className="mt-3 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Search results for:</span>
+              <span className="text-sm font-semibold text-boutique-primary">"{filters.search}"</span>
+            </div>
+            <button
+              onClick={clearSearch}
+              className="text-sm text-gray-500 hover:text-red-500 flex items-center gap-1"
+            >
+              <FiX className="w-4 h-4" />
+              Clear Search
+            </button>
+          </div>
+        )}
       </div>
       
       {/* Advanced Filters Panel */}
@@ -330,14 +364,6 @@ const ShopPage = () => {
                         </button>
                       </span>
                     )}
-                    {filters.search && (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-boutique-primary/10 text-boutique-primary text-sm rounded-full">
-                        Search: {filters.search}
-                        <button onClick={() => handleFilterChange('search', '')} className="hover:text-red-500">
-                          <FiX className="w-3 h-3" />
-                        </button>
-                      </span>
-                    )}
                   </div>
                 </div>
               )}
@@ -352,7 +378,7 @@ const ShopPage = () => {
           <p className="text-gray-600 dark:text-dark-textMuted">
             Showing <span className="font-semibold text-boutique-primary">{products.length}</span> of{' '}
             <span className="font-semibold">{pagination?.total || 0}</span> products
-            {filters.search && ` for "${filters.search}"`}
+            {filters.search && ` matching "${filters.search}"`}
           </p>
         </div>
         
@@ -380,12 +406,22 @@ const ShopPage = () => {
             No products found
           </h3>
           <p className="text-gray-500 dark:text-dark-textMuted mb-6 max-w-md mx-auto">
-            We couldn't find any products matching your criteria. Try adjusting your search or filter settings.
+            {filters.search 
+              ? `We couldn't find any products matching "${filters.search}". Try different keywords or browse our categories.`
+              : "We couldn't find any products matching your criteria. Try adjusting your search or filter settings."}
           </p>
-          <button onClick={clearFilters} className="btn-primary inline-flex items-center gap-2">
-            <FiX className="w-4 h-4" />
-            Clear all filters
-          </button>
+          {filters.search && (
+            <button onClick={clearSearch} className="btn-primary inline-flex items-center gap-2 mb-3">
+              <FiX className="w-4 h-4" />
+              Clear Search
+            </button>
+          )}
+          {(filters.category || filters.minPrice || filters.maxPrice) && (
+            <button onClick={clearFilters} className="btn-outline inline-flex items-center gap-2">
+              <FiX className="w-4 h-4" />
+              Clear all filters
+            </button>
+          )}
         </motion.div>
       )}
       

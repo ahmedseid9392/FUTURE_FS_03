@@ -18,12 +18,16 @@ import {
 import ProductGrid from '../components/products/ProductGrid';
 import { productService } from '../services/productService';
 
+import RecommendationSection from '../components/recommendations/RecommendationSection';
+import { useAuthStore } from '../store/authStore';
+
+
 const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [newArrivals, setNewArrivals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-  
+  const { isAuthenticated } = useAuthStore()
   useEffect(() => {
     const fetchProducts = async () => {
       const featuredResult = await productService.getFeatured(8);
@@ -195,6 +199,21 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* recommendations product section */}
+      {isAuthenticated && (
+  <RecommendationSection 
+    title="Recommended For You" 
+    type="personalized" 
+    limit={8}
+  />
+)}
+
+<RecommendationSection 
+  title="Trending Now" 
+  type="trending" 
+  limit={8}
+/>
 
       {/* Categories Section with Hover Effect */}
       <section className="py-20 max-w-7xl mx-auto px-4">
