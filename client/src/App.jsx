@@ -22,8 +22,10 @@ import OrderDetailsPage from './pages/OrderDetailsPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import PaymentStatusPage from './pages/PaymentStatusPage';
-import AuthCallback from './pages/AuthCallback'; 
+import AuthCallback from './pages/AuthCallback';
 import SearchPage from './pages/SearchPage';
+import WishlistPage from './pages/WishlistPage';
+import OrderTrackingPage from './pages/OrderTrackingPage';
 
 // Admin Pages
 import AdminLayout from './components/admin/AdminLayout';
@@ -33,7 +35,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminSettings from './pages/admin/AdminSettings';
 import AddProduct from './pages/admin/AddProduct';
-
+import AdminCoupons from './pages/admin/AdminCoupons';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -45,11 +47,11 @@ const queryClient = new QueryClient({
 
 function App() {
   const { checkAuth } = useAuthStore();
-  
+
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-  
+
   return (
     <ThemeProvider>
       <CurrencyProvider>
@@ -64,11 +66,11 @@ function App() {
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/payment-status" element={<PaymentStatusPage />} />
-                
+
                 {/* Google OAuth Callback - MUST be before protected routes */}
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/search" element={<SearchPage />} />
-                
+<Route path="/track-order" element={<OrderTrackingPage />} />
                 {/* Auth Routes */}
                 <Route path="/login" element={
                   <ProtectedRoute requireAuth={false}>
@@ -80,13 +82,23 @@ function App() {
                     <RegisterPage />
                   </ProtectedRoute>
                 } />
-                
+
                 {/* Protected Routes - Require Login */}
                 <Route path="/cart" element={
                   <ProtectedRoute requireAuth={true}>
                     <CartPage />
                   </ProtectedRoute>
                 } />
+                <Route path="/wishlist" element={
+                  <ProtectedRoute requireAuth={true}>
+                    <WishlistPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tracking/:orderId" element={
+  <ProtectedRoute requireAuth={true}>
+    <OrderTrackingPage />
+  </ProtectedRoute>
+} />
                 <Route path="/checkout" element={
                   <ProtectedRoute requireAuth={true}>
                     <CheckoutPage />
@@ -107,8 +119,8 @@ function App() {
                     <OrderDetailsPage />
                   </ProtectedRoute>
                 } />
-                
-                
+
+
                 {/* Admin Routes */}
                 <Route path="/admin" element={
                   <ProtectedRoute requireAuth={true}>
@@ -121,6 +133,7 @@ function App() {
                   <Route path="orders" element={<AdminOrders />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="settings" element={<AdminSettings />} />
+                  <Route path="coupons" element={<AdminCoupons />} />
                 </Route>
               </Routes>
             </Layout>

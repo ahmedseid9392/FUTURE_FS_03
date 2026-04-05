@@ -28,6 +28,7 @@ import ReviewForm from '../components/products/ReviewForm';
 import RelatedProducts from '../components/products/RelatedProducts';
 import toast from 'react-hot-toast';
 import RecommendationSection from '../components/recommendations/RecommendationSection';
+import { useWishlistStore } from '../store/wishlistStore';
 const ProductPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -135,16 +136,22 @@ const ProductPage = () => {
   };
 
   const handleLike = () => {
-    if (!isAuthenticated) {
-      toast.error('Please login to like products');
-      setTimeout(() => navigate('/login'), 1500);
-      return;
-    }
-
-    setIsLiked(!isLiked);
-    toast.success(isLiked ? 'Removed from wishlist' : 'Added to wishlist');
-  };
-
+  if (!isAuthenticated) {
+    toast.error('Please login to add items to wishlist');
+    setTimeout(() => navigate('/login'), 1500);
+    return;
+  }
+  
+  if (isLiked) {
+    removeFromWishlist(product._id);
+    setIsLiked(false);
+    toast.success('Removed from wishlist');
+  } else {
+    addToWishlist(product);
+    setIsLiked(true);
+    toast.success('Added to wishlist');
+  }
+};
   const handleQuantityChange = (type) => {
     if (type === 'increase' && quantity < (product?.stock || 10)) {
       setQuantity(prev => prev + 1);
@@ -189,6 +196,16 @@ const ProductPage = () => {
       setReviewLoading(false);
     }
   };
+
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
+
+// Check if product is in wishlist
+useEffect(() => {
+  if (product) {
+    setIsLiked(isInWishlist(product._id));
+  }
+}, [product, isInWishlist]);
+
 
   const handleHelpfulReview = (reviewId) => {
     console.log('Helpful clicked for review:', reviewId);

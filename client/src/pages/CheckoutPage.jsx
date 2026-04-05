@@ -26,6 +26,7 @@ import orderService from '../services/orderService';
 import { paymentService } from '../services/paymentService';
 import toast from 'react-hot-toast';
 import CheckoutGuard from '../components/checkout/CheckoutGuard';
+import CouponInput from '../components/checkout/CouponInput';
 
 const checkoutSchema = z.object({
   fullName: z.string().min(3, 'Full name is required'),
@@ -51,6 +52,8 @@ const CheckoutPage = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
   
   const { register, handleSubmit, formState: { errors }, watch } = useForm({
     resolver: zodResolver(checkoutSchema),
@@ -72,7 +75,7 @@ const CheckoutPage = () => {
   const subtotal = getSubtotal();
   const shipping = getShipping();
   const tax = getTax();
-  const total = getTotal();
+  const total = subtotal + shipping + tax - discountAmount;
   
   // Redirect if cart is empty
   useEffect(() => {
@@ -81,6 +84,16 @@ const CheckoutPage = () => {
       navigate('/shop');
     }
   }, [items.length, navigate, orderPlaced]);
+
+  const handleCouponApplied = (coupon) => {
+    if (coupon) {
+      setAppliedCoupon(coupon);
+      setDiscountAmount(coupon.discountAmount);
+    } else {
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+    }
+  };
   
   const onSubmit = async (data) => {
     if (items.length === 0) {
@@ -243,6 +256,7 @@ const CheckoutPage = () => {
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* ... shipping fields ... */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
                     Full Name *
@@ -385,6 +399,14 @@ const CheckoutPage = () => {
               </div>
             </div>
             
+            {/* Coupon Input */}
+            <div>
+              <CouponInput 
+                cartTotal={subtotal} 
+                onCouponApplied={handleCouponApplied} 
+              />
+            </div>
+            
             {/* Payment Method */}
             <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border p-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -522,6 +544,12 @@ const CheckoutPage = () => {
                 <span className="text-gray-600 dark:text-dark-textMuted">Tax (2%)</span>
                 <span>{formatPrice(tax)}</span>
               </div>
+              {appliedCoupon && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Discount ({appliedCoupon.code})</span>
+                  <span>- {formatPrice(discountAmount)}</span>
+                </div>
+              )}
               <div className="border-t border-gray-200 dark:border-dark-border pt-2 mt-2">
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>

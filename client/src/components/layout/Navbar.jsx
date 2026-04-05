@@ -7,7 +7,8 @@ import { useAuthStore } from '../../store/authStore';
 import ThemeToggle from '../common/ThemeToggle';
 import UserAvatar from '../common/UserAvatar';
 import SearchAutocomplete from '../search/SearchAutocomplete';
-
+import { FiHeart } from 'react-icons/fi';
+import { useWishlistStore } from '../../store/wishlistStore';
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -17,7 +18,7 @@ const Navbar = () => {
   const location = useLocation();
   const cartItemsCount = useCartStore((state) => state.getTotalItems());
   const { user, isAuthenticated, logout, checkAuth } = useAuthStore();
-
+const wishlistCount = useWishlistStore((state) => state.getTotalItems());
   const handleSearch = (query) => {
     if (query && query.trim()) {
       navigate(`/search?q=${encodeURIComponent(query)}`);
@@ -131,7 +132,22 @@ const Navbar = () => {
                   </span>
                 )}
               </Link>
+              
             )}
+               {isAuthenticated && user?.role === 'customer' && (
+            <Link to="/wishlist" className="relative">
+  <FiHeart className="w-5 h-5 text-gray-700 dark:text-dark-text hover:text-boutique-primary transition-colors" />
+  {wishlistCount > 0 && (
+    <span className="absolute -top-2 -right-2 bg-boutique-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+      {wishlistCount}
+    </span>
+  )}
+</Link>
+  )}
+ 
+ 
+        
+           
             
             {/* User Dropdown with Avatar */}
             {isAuthenticated && user ? (
@@ -197,6 +213,14 @@ const Navbar = () => {
                       <FiClipboard className="w-4 h-4" />
                       My Orders
                     </Link>
+                    <Link
+  to="/wishlist"
+  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-dark-text hover:bg-gray-100 dark:hover:bg-dark-border transition-colors"
+  onClick={() => setIsDropdownOpen(false)}
+>
+  <FiHeart className="w-4 h-4" />
+  My Wishlist ({wishlistCount})
+</Link>
                     
                     {/* Admin Links - Only for admin */}
                     {user.role === 'admin' && (
@@ -269,6 +293,7 @@ const Navbar = () => {
                 )}
               </Link>
             ))}
+   
             
             {/* Cart in mobile menu - only for customers */}
             {isAuthenticated && user?.role === 'customer' && (
@@ -280,7 +305,7 @@ const Navbar = () => {
                 Cart ({cartItemsCount})
               </Link>
             )}
-            
+                          
             {isAuthenticated && user && (
               <>
                 <div className="flex items-center gap-3 py-3 border-t border-gray-200 dark:border-dark-border mt-2">
@@ -307,7 +332,17 @@ const Navbar = () => {
                   >
                     My Cart ({cartItemsCount})
                   </Link>
+                  
                 )}
+ {user.role === 'customer' && (
+                <Link
+  to="/wishlist"
+  className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"
+  onClick={() => setIsOpen(false)}
+>
+  Wishlist ({wishlistCount})
+</Link>
+        )}
                 <Link
                   to="/orders"
                   className="block py-2 text-gray-700 dark:text-dark-text hover:text-boutique-primary"

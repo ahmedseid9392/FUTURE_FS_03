@@ -7,7 +7,6 @@ export const orderService = {
       const response = await api.post('/orders', orderData);
       console.log('✅ Raw API response:', response.data);
       
-      // Handle different response structures
       if (response.data.success) {
         return {
           success: true,
@@ -42,6 +41,11 @@ export const orderService = {
       if (filters.page) params.append('page', filters.page);
       if (filters.limit) params.append('limit', filters.limit);
       if (filters.status) params.append('status', filters.status);
+      if (filters.search) params.append('search', filters.search);
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+      if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
+      if (filters.sort) params.append('sort', filters.sort);
       
       const response = await api.get(`/orders?${params.toString()}`);
       
@@ -71,60 +75,59 @@ export const orderService = {
   },
   
   getById: async (id) => {
-  try {
-    const response = await api.get(`/orders/${id}`);
-    console.log('Get order by ID response:', response.data);
-    
-    if (response.data.success) {
+    try {
+      const response = await api.get(`/orders/${id}`);
+      console.log('Get order by ID response:', response.data);
+      
+      if (response.data.success) {
+        return {
+          success: true,
+          order: response.data.order || response.data.data?.order
+        };
+      }
+      
       return {
-        success: true,
-        order: response.data.order || response.data.data?.order
+        success: false,
+        message: response.data.message || 'Failed to fetch order'
+      };
+    } catch (error) {
+      console.error('Get order error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch order'
       };
     }
-    
-    return {
-      success: false,
-      message: response.data.message || 'Failed to fetch order'
-    };
-  } catch (error) {
-    console.error('Get order error:', error);
-    return {
-      success: false,
-      message: error.response?.data?.message || 'Failed to fetch order'
-    };
-  }
-},
+  },
   
- getMyOrders: async (page = 1, limit = 10) => {
-  try {
-    const response = await api.get(`/orders/my-orders?page=${page}&limit=${limit}`);
-    console.log('My orders response:', response.data);
-    
-    // Handle different response structures
-    if (response.data.success) {
+  getMyOrders: async (page = 1, limit = 10) => {
+    try {
+      const response = await api.get(`/orders/my-orders?page=${page}&limit=${limit}`);
+      console.log('My orders response:', response.data);
+      
+      if (response.data.success) {
+        return {
+          success: true,
+          data: {
+            orders: response.data.orders || response.data.data?.orders || [],
+            pagination: response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 }
+          }
+        };
+      }
+      
       return {
-        success: true,
-        data: {
-          orders: response.data.orders || response.data.data?.orders || [],
-          pagination: response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 }
-        }
+        success: false,
+        data: { orders: [], pagination: {} },
+        message: response.data.message || 'Failed to fetch orders'
+      };
+    } catch (error) {
+      console.error('Get my orders error:', error);
+      return {
+        success: false,
+        data: { orders: [], pagination: {} },
+        message: error.response?.data?.message || 'Failed to fetch orders'
       };
     }
-    
-    return {
-      success: false,
-      data: { orders: [], pagination: {} },
-      message: response.data.message || 'Failed to fetch orders'
-    };
-  } catch (error) {
-    console.error('Get my orders error:', error);
-    return {
-      success: false,
-      data: { orders: [], pagination: {} },
-      message: error.response?.data?.message || 'Failed to fetch orders'
-    };
-  }
-},
+  },
   
   updateStatus: async (id, data) => {
     try {
@@ -152,18 +155,32 @@ export const orderService = {
     }
   },
   
-cancel: async (id, reason) => {
-  try {
-    const response = await api.put(`/orders/${id}/cancel`, { reason });
-    return response.data;
-  } catch (error) {
-    console.error('Cancel order error:', error);
-    return {
-      success: false,
-      message: error.response?.data?.message || 'Failed to cancel order'
-    };
+  cancel: async (id, reason) => {
+    try {
+      const response = await api.put(`/orders/${id}/cancel`, { reason });
+      return response.data;
+    } catch (error) {
+      console.error('Cancel order error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to cancel order'
+      };
+    }
+  },
+  
+  // Add this method - Delete order (only for cancelled orders)
+  deleteOrder: async (orderId) => {
+    try {
+      const response = await api.delete(`/orders/${orderId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Delete order error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to delete order'
+      };
+    }
   }
-},
 };
 
 export default orderService;

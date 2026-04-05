@@ -12,7 +12,8 @@ import {
   FiBell,
   FiSearch,
   FiChevronDown,
-  FiUserCheck
+  FiUserCheck,
+  FiTag
 } from 'react-icons/fi';
 import { useAuthStore } from '../../store/authStore';
 import { checkAdminAccess } from '../../utils/checkAdmin';
@@ -65,12 +66,13 @@ const AdminLayout = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const navItems = [
-    { name: 'Dashboard', path: '/admin', icon: FiHome, description: 'Overview & Analytics' },
-    { name: 'Products', path: '/admin/products', icon: FiPackage, description: 'Manage inventory' },
-    { name: 'Orders', path: '/admin/orders', icon: FiShoppingCart, description: 'Track orders' },
-    { name: 'Users', path: '/admin/users', icon: FiUsers, description: 'Customer management' },
-    { name: 'Settings', path: '/admin/settings', icon: FiSettings, description: 'System config' },
-  ];
+  { name: 'Dashboard', path: '/admin', icon: FiHome, description: 'Overview & Analytics' },
+  { name: 'Products', path: '/admin/products', icon: FiPackage, description: 'Manage inventory' },
+  { name: 'Orders', path: '/admin/orders', icon: FiShoppingCart, description: 'Track orders' },
+  { name: 'Users', path: '/admin/users', icon: FiUsers, description: 'Customer management' },
+  { name: 'Coupons', path: '/admin/coupons', icon: FiTag, description: 'Discount coupons' },
+  { name: 'Settings', path: '/admin/settings', icon: FiSettings, description: 'System config' },
+];
 
   // Close sidebar on route change on mobile
   useEffect(() => {

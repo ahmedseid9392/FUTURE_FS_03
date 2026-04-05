@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiShoppingBag, FiHeart, FiEye, FiPackage, FiCheck } from 'react-icons/fi';
@@ -7,6 +7,7 @@ import { useCurrencyContext } from '../../context/CurrencyContext';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import RatingStars from '../common/RatingStars';
+import { useWishlistStore } from '../../store/wishlistStore';
 
 
 
@@ -72,6 +73,38 @@ const [selectedVariantColor, setSelectedVariantColor] = useState('');
     setIsLiked(!isLiked);
     toast.success(isLiked ? 'Removed from wishlist' : 'Added to wishlist');
   };
+
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
+const [isWishlisted, setIsWishlisted] = useState(false);
+
+// Check if product is in wishlist on mount
+useEffect(() => {
+  if (product) {
+    setIsWishlisted(isInWishlist(product._id));
+  }
+}, [product, isInWishlist]);
+
+// Handle wishlist toggle
+const handleWishlistToggle = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (!isAuthenticated) {
+    toast.error('Please login to add items to wishlist');
+    setTimeout(() => navigate('/login'), 1500);
+    return;
+  }
+  
+  if (isWishlisted) {
+    removeFromWishlist(product._id);
+    setIsWishlisted(false);
+    toast.success('Removed from wishlist');
+  } else {
+    addToWishlist(product);
+    setIsWishlisted(true);
+    toast.success('Added to wishlist');
+  }
+};
   
   const handleViewDetails = (e) => {
     e.preventDefault();
@@ -143,16 +176,17 @@ const [selectedVariantColor, setSelectedVariantColor] = useState('');
               </button>
               
               <button
-                onClick={handleLike}
-                className={`p-3 rounded-full transition-all transform hover:scale-110 ${
-                  isLiked 
-                    ? 'bg-red-500 text-white'
-                    : 'bg-white text-gray-800 hover:bg-red-500 hover:text-white'
-                }`}
-                title={isLiked ? "Remove from wishlist" : "Add to wishlist"}
-              >
-                <FiHeart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-              </button>
+  onClick={handleWishlistToggle}
+  className={`p-3 rounded-full transition-all transform hover:scale-110 ${
+    isWishlisted 
+      ? 'bg-red-500 text-white'
+      : 'bg-white text-gray-800 hover:bg-red-500 hover:text-white'
+  }`}
+  title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+>
+  <FiHeart className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
+</button>
+
               
               <button
                 onClick={handleViewDetails}

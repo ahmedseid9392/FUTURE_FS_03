@@ -15,6 +15,8 @@ import './config/passport.js'; // Import passport config
 
 import paymentRoutes from './routes/paymentRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
+import trackingRoutes from './routes/trackingRoutes.js';
+import couponRoutes from './routes/couponRoutes.js';
 // Load environment variables
 dotenv.config();
 
@@ -70,6 +72,11 @@ app.use('/api/payments', paymentRoutes);
 console.log('✅ Payment routes registered at /api/payments');
 app.use('/api/recommendations', recommendationRoutes);
 console.log('✅ Recommendation routes registered at /api/recommendations');
+app.use('/api/tracking', trackingRoutes);
+console.log('✅ Tracking routes registered at /api/tracking');
+
+app.use('/api/coupons', couponRoutes);
+console.log('✅ Coupon routes registered at /api/coupons');
 // Basic test route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 

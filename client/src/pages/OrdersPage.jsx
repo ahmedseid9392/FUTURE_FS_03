@@ -1,28 +1,77 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { FiPackage, FiTruck, FiCheckCircle, FiClock, FiEye, FiAlertCircle } from 'react-icons/fi';
+import { 
+  FiPackage, 
+  FiTruck, 
+  FiCheckCircle, 
+  FiClock, 
+  FiEye, 
+  FiTrash2,
+  FiAlertCircle
+} from 'react-icons/fi';
 import { orderService } from '../services/orderService';
 import { useCurrencyContext } from '../context/CurrencyContext';
 import { useAuthStore } from '../store/authStore';
+import ConfirmationModal from '../components/common/ConfirmationModal';
+import toast from 'react-hot-toast';
 
 const OrdersPage = () => {
   const { formatPrice } = useCurrencyContext();
   const { user } = useAuthStore();
-  
+  const queryClient = useQueryClient();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState(null);
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['my-orders'],
     queryFn: () => orderService.getMyOrders(),
     enabled: !!user
   });
-  
-  // Handle different response structures
+
+  // Delete order mutation
+  const deleteMutation = useMutation({
+    mutationFn: (orderId) => orderService.deleteOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['my-orders']);
+      toast.success('Order deleted successfully');
+      setDeleteModalOpen(false);
+      setOrderToDelete(null);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete order');
+    },
+  });
+
+  // Handle delete order
+  const handleDeleteOrder = () => {
+    if (orderToDelete) {
+      deleteMutation.mutate(orderToDelete._id);
+    }
+  };
+
+  // Check if order can be deleted (only canceled orders)
+  const canDeleteOrder = (order) => {
+    return order.orderStatus === 'cancelled';
+  };
+
+  // Handle delete click
+  const handleDeleteClick = (order) => {
+    setOrderToDelete(order);
+    setDeleteModalOpen(true);
+  };
+
+  // Handle view details
+  const handleViewDetails = (orderId) => {
+    window.location.href = `/orders/${orderId}`;
+  };
+
+  // Extract orders from response
   let orders = [];
   let pagination = {};
   
   if (data?.success) {
-    // Check different possible response structures
     if (data.data?.orders) {
       orders = data.data.orders;
       pagination = data.data.pagination || {};
@@ -35,10 +84,7 @@ const OrdersPage = () => {
       orders = data.data;
     }
   }
-  
-  console.log('Orders data:', data);
-  console.log('Extracted orders:', orders);
-  
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'delivered':
@@ -48,11 +94,13 @@ const OrdersPage = () => {
       case 'pending':
       case 'processing':
         return <FiClock className="w-5 h-5 text-yellow-500" />;
+      case 'cancelled':
+        return <FiAlertCircle className="w-5 h-5 text-red-500" />;
       default:
         return <FiPackage className="w-5 h-5 text-gray-500" />;
     }
   };
-  
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'delivered':
@@ -71,7 +119,7 @@ const OrdersPage = () => {
         return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
     }
   };
-  
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -82,7 +130,7 @@ const OrdersPage = () => {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12 text-center">
@@ -101,7 +149,7 @@ const OrdersPage = () => {
       </div>
     );
   }
-  
+
   if (!orders || orders.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
@@ -120,9 +168,24 @@ const OrdersPage = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setOrderToDelete(null);
+        }}
+        onConfirm={handleDeleteOrder}
+        title="Delete Order"
+        message={`Are you sure you want to delete order #${orderToDelete?.orderNumber || orderToDelete?._id?.slice(-8)}? This action cannot be undone.`}
+        confirmText="Yes, Delete Order"
+        cancelText="Cancel"
+        type="danger"
+      />
+
       <h1 className="text-3xl font-playfair font-bold text-gray-900 dark:text-white mb-8">
         My Orders
       </h1>
@@ -161,13 +224,27 @@ const OrdersPage = () => {
                     {order.orderStatus?.toUpperCase() || 'PENDING'}
                   </span>
                 </div>
-                <Link
-  to={`/orders/${order._id}`}
-  className="text-boutique-primary hover:underline flex items-center gap-1 text-sm"
->
-  <FiEye className="w-4 h-4" />
-  View Details
-</Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/orders/${order._id}`}
+                    className="text-boutique-primary hover:underline flex items-center gap-1 text-sm"
+                  >
+                    <FiEye className="w-4 h-4" />
+                    View Details
+                  </Link>
+                  
+                  {/* Delete Button - Only for canceled orders */}
+                  {canDeleteOrder(order) && (
+                    <button
+                      onClick={() => handleDeleteClick(order)}
+                      className="text-red-600 hover:text-red-700 flex items-center gap-1 text-sm transition-colors"
+                      title="Delete Order"
+                    >
+                      <FiTrash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             
