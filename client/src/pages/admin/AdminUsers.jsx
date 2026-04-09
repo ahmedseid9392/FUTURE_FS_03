@@ -432,7 +432,7 @@ const AdminUsers = () => {
                 <button
                   onClick={() => {
                     // View user details
-                    toast.info(`Viewing ${user.name}'s profile`);
+                    toast.success(`Viewing ${user.name}'s profile`);
                   }}
                   className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 >

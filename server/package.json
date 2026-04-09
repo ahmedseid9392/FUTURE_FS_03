@@ -20,7 +20,8 @@
     "add:profileimage": "node scripts/addProfileImageToAllUsers.js",
     "drop:index": "node scripts/dropOrderNumberIndex.js",
     "fix:null": "node scripts/fixNullOrderNumbers.js",
-    "test:chapa": "node scripts/testChapa.js"
+    "test:chapa": "node scripts/testChapa.js",
+    "seed:more": "node scripts/seedMoreProducts.js"
   },
   "keywords": [],
   "author": "",
