@@ -53,6 +53,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Jams Boutique API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      products: '/api/products',
+      orders: '/api/orders'
+    }
+  });
+});
 // Routes
 console.log('📌 Registering routes...');
 
