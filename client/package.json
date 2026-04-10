@@ -1,5 +1,5 @@
 {
-  "name": "client",
+  "name": "jams-boutique-client",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build"
+  },
+  "engines": {
+    "node": "18.x"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -43,6 +47,7 @@
     "globals": "^17.4.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
+    "terser": "^5.46.1",
     "vite": "^8.0.1"
   }
 }
