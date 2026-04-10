@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: jams-boutique-frontend
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://your-backend-url.onrender.com/api
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: your_google_client_id
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=31536000
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -7,6 +7,10 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+    "engines": {
+    "node": "20.19.0",
+    "npm": "10"
+  },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "@hookform/resolvers": "^3.3.2",
