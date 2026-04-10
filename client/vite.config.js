@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://jams-boutique-api.onrender.com',
+        target: process.env.VITE_API_URL || 'https://jams-boutique-api.onrender.com/api',
         changeOrigin: true,
       }
     }
@@ -17,9 +17,27 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['framer-motion', 'react-icons'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            // React core
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'vendor-react';
+            }
+            // UI libraries
+            if (id.includes('framer-motion') || id.includes('react-icons') || id.includes('lucide-react')) {
+              return 'vendor-ui';
+            }
+            // Data libraries
+            if (id.includes('@tanstack') || id.includes('axios') || id.includes('zustand')) {
+              return 'vendor-data';
+            }
+            // Forms
+            if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
+              return 'vendor-forms';
+            }
+            // Everything else
+            return 'vendor';
+          }
         }
       }
     }
