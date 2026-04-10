@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://jams-boutique-api.onrender.com', // Your Render backend URL
+        target: 'https://jams-boutique-api.onrender.com',
         changeOrigin: true,
       }
     }
@@ -15,23 +15,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'terser',
     rollupOptions: {
       output: {
-        // Fix: manualChunks should be a function, not an object
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'vendor-react';
-            }
-            if (id.includes('framer-motion') || id.includes('react-icons') || id.includes('@headlessui')) {
-              return 'vendor-ui';
-            }
-            if (id.includes('@tanstack') || id.includes('axios') || id.includes('zustand')) {
-              return 'vendor-data';
-            }
-            return 'vendor';
-          }
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['framer-motion', 'react-icons'],
         }
       }
     }
