@@ -76,7 +76,7 @@ export const useCartStore = create(
       
       getShipping: () => {
         const subtotal = get().getSubtotal();
-        return subtotal > 50 ? 0 : 5;
+        return subtotal > 2750 ? 0 : 275;
       },
       
       getTax: () => {

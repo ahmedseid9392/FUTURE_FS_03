@@ -12,26 +12,20 @@ export const useCurrencyContext = () => {
 };
 
 export const CurrencyProvider = ({ children }) => {
-  const [currencyCode, setCurrencyCode] = useState(() => {
-    const saved = localStorage.getItem('currency');
-    return saved || 'USD';
-  });
-  
-  useEffect(() => {
-    localStorage.setItem('currency', currencyCode);
-  }, [currencyCode]);
+  // Force currency to always be ETB
+  const [currencyCode, setCurrencyCode] = useState('ETB');
   
   const formatPrice = (price) => {
-    return currency.format(price, currencyCode);
+    return currency.format(price, 'ETB');
   };
   
   const convertPrice = (price) => {
-    return currencyCode === 'ETB' ? price * currency.getExchangeRate() : price;
+    return price; // No conversion needed, always ETB
   };
   
   const value = {
-    currencyCode,
-    setCurrencyCode,
+    currencyCode: 'ETB',
+    setCurrencyCode: () => {}, // No-op, currency can't be changed
     formatPrice,
     convertPrice
   };

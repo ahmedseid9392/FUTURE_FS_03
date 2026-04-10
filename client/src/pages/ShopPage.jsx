@@ -20,7 +20,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import ProductGrid from '../components/products/ProductGrid';
 import { productService } from '../services/productService';
 import { useCurrencyContext } from '../context/CurrencyContext';
-import CurrencyToggle from '../components/common/CurrencyToggle';
+
 import SearchAutocomplete from '../components/search/SearchAutocomplete';
 import RecommendationSection from '../components/recommendations/RecommendationSection';
 const ShopPage = () => {
@@ -231,8 +231,8 @@ const ShopPage = () => {
               </button>
             </div>
             
-            {/* Currency Toggle */}
-            <CurrencyToggle />
+        
+          
           </div>
         </div>
         

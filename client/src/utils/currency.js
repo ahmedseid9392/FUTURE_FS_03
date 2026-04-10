@@ -1,34 +1,30 @@
-// Exchange rate (1 USD = 55 ETB - approximate)
-const USD_TO_ETB_RATE = 55;
-
+// Ethiopian Birr only - No USD conversion
 export const currency = {
-  // Format price based on selected currency
-  format: (price, currencyCode = 'USD') => {
-    const amount = currencyCode === 'ETB' ? price * USD_TO_ETB_RATE : price;
-    
-    return new Intl.NumberFormat(currencyCode === 'ETB' ? 'am-ET' : 'en-US', {
+  // Format price in Ethiopian Birr only
+  format: (price, currencyCode = 'ETB') => {
+    return new Intl.NumberFormat('am-ET', {
       style: 'currency',
-      currency: currencyCode,
+      currency: 'ETB',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(amount);
+    }).format(price);
   },
   
-  // Convert USD to ETB
+  // Convert USD to ETB (if needed for backend)
   toETB: (usdPrice) => {
-    return usdPrice * USD_TO_ETB_RATE;
+    return usdPrice;
   },
   
-  // Convert ETB to USD
+  // Convert ETB to USD (if needed)
   toUSD: (etbPrice) => {
-    return etbPrice / USD_TO_ETB_RATE;
+    return etbPrice;
   },
   
-  // Get current exchange rate
-  getExchangeRate: () => USD_TO_ETB_RATE
+  // Get exchange rate (always 1 for ETB)
+  getExchangeRate: () => 1
 };
 
-// Export individual functions as well
+// Export individual functions
 export const formatPrice = currency.format;
 export const toETB = currency.toETB;
 export const toUSD = currency.toUSD;

@@ -46,7 +46,7 @@ const AdminSettings = () => {
   
   // Store Settings
   const [storeSettings, setStoreSettings] = useState({
-    freeShippingThreshold: 50,
+    freeShippingThreshold: 2750,
     taxRate: 2,
     lowStockAlert: 5,
     maxOrderQuantity: 10,
